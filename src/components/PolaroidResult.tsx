@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Download, X, Share2, Pencil, BookOpen } from "lucide-react";
+import type { FlowerCard } from "../App";
 
 export type FlowerStory = {
   summary: string;
@@ -16,6 +17,7 @@ interface Props {
   imageSrc: string;
   flowerName: string;
   flowerLanguage: string;
+  matchedFlower?: FlowerCard | null;
   onClose: () => void;
   onSaveToArchive: (
     savedImage: string,
@@ -28,6 +30,7 @@ export default function PolaroidResult({
   imageSrc,
   flowerName,
   flowerLanguage,
+  matchedFlower,
   onClose,
   onSaveToArchive,
 }: Props) {
@@ -36,6 +39,7 @@ export default function PolaroidResult({
   const [story, setStory] = useState<FlowerStory | null>(null);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [isStoryLoading, setIsStoryLoading] = useState(false);
+  const [shareCount, setShareCount] = useState(0);
 
   const generatePolaroidBase64 = (): Promise<string> => {
     return new Promise((resolve) => {
@@ -143,6 +147,12 @@ export default function PolaroidResult({
   };
 
   const loadFlowerStory = async () => {
+    if (shareCount < 3) {
+      alert(
+        `친구 3명에게 꽃카드를 공유하면 이 꽃에 대한 다양한 이야기를 볼 수 있어요 🌸\n\n현재 공유: ${shareCount}/3`,
+      );
+      return;
+    }
     if (story) {
       setIsStoryOpen(true);
       return;
@@ -216,15 +226,17 @@ export default function PolaroidResult({
       await navigator.share({
         files: [file],
         title: "엄마는꽃",
-        text: `엄마는꽃에서 만든 나만의 꽃카드예요 🌸
+        text: `엄마는꽃에서 만든 꽃카드예요 🌸
 
 꽃 이름: ${flowerName}
 꽃말: ${flowerLanguage}
 ${memo.trim() ? `메모: ${memo.trim()}` : ""}
 
-나도 꽃 이름 찾아보기
+나도 길가의 꽃 이름을 찾아보기
 https://mom-is-flower-app.vercel.app`,
       });
+
+      setShareCount((prev) => Math.min(prev + 1, 3));
     } catch (error) {
       console.error("이미지 공유 실패:", error);
       alert("꽃카드 이미지 공유 중 문제가 발생했어요.");
@@ -268,6 +280,16 @@ https://mom-is-flower-app.vercel.app`,
           <p className="text-sm text-pink-500 font-semibold">
             꽃말 : {flowerLanguage}
           </p>
+
+          {matchedFlower && (
+            <div className="mt-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-700 leading-relaxed">
+              <p className="font-bold">🌼 이미 수집한 꽃이에요!</p>
+              <p className="mt-0.5">첫 수집일: {matchedFlower.createdAt}</p>
+              {matchedFlower.memo && (
+                <p className="mt-0.5">그때의 메모: {matchedFlower.memo}</p>
+              )}
+            </div>
+          )}
 
           <button
             type="button"

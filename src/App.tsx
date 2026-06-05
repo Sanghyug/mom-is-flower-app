@@ -1,10 +1,4 @@
-import { useEffect, useState } from "react";
-import {
-  openCamera,
-  OpenCameraPermissionError,
-  fetchAlbumPhotos,
-  FetchAlbumPhotosPermissionError,
-} from "@apps-in-toss/web-framework";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Image as ImageIcon } from "lucide-react";
 import PolaroidResult from "./components/PolaroidResult";
 import FlowerArchiver from "./components/FlowerArchiver";
@@ -33,17 +27,6 @@ export type FlowerCard = {
 export default function App() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  type FlowerStory = {
-    summary: string;
-    habitat: string;
-    origin: string;
-    season: string;
-    features: string;
-    meaningOrigin: string;
-    legend: string;
-    art: string;
-  };
-
   const [flowerData, setFlowerData] = useState<{
     name: string;
     language: string;
@@ -51,6 +34,9 @@ export default function App() {
   } | null>(null);
   const [archive, setArchive] = useState<FlowerCard[]>([]);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
+  const [matchedFlower, setMatchedFlower] = useState<FlowerCard | null>(null);
 
   useEffect(() => {
     const savedArchive = localStorage.getItem("mom-is-flower-archive");
@@ -78,64 +64,98 @@ export default function App() {
   }, []);
 
   // 스마트폰 앨범/카메라 파일 선택 처리 핸들러
-  const handleOpenCamera = async () => {
-    try {
-      const response = await openCamera({
-        base64: true,
-        maxWidth: 1024,
-      });
+  const resizeImageFileToDataUrl = (
+    file: File,
+    maxWidth = 1024,
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-      const imageUri = response.dataUri.startsWith("data:")
-        ? response.dataUri
-        : `data:image/jpeg;base64,${response.dataUri}`;
+      reader.onload = () => {
+        const img = new Image();
+
+        img.onload = () => {
+          const scale = Math.min(1, maxWidth / img.width);
+          const canvas = document.createElement("canvas");
+
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            reject(new Error("이미지 처리에 실패했어요."));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          resolve(canvas.toDataURL("image/jpeg", 0.9));
+        };
+
+        img.onerror = () => {
+          reject(new Error("이미지를 불러오지 못했어요."));
+        };
+
+        if (typeof reader.result === "string") {
+          img.src = reader.result;
+        } else {
+          reject(new Error("이미지 파일을 읽지 못했어요."));
+        }
+      };
+
+      reader.onerror = () => {
+        reject(new Error("이미지 파일을 읽지 못했어요."));
+      };
+
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    try {
+      const file = event.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      const imageUri = await resizeImageFileToDataUrl(file, 1024);
 
       setImageSrc(imageUri);
       await analyzeFlowerWithAI(imageUri);
     } catch (error) {
-      if (error instanceof OpenCameraPermissionError) {
-        alert("카메라 권한이 필요해요. 권한을 허용한 뒤 다시 시도해 주세요.");
-        return;
-      }
-
-      console.error("카메라 실행 실패:", error);
-      alert("카메라를 여는 중 문제가 발생했어요.");
+      console.error("이미지 처리 실패:", error);
+      const message =
+        error instanceof Error ? error.message : "알 수 없는 오류";
+      alert(`사진을 불러오는 중 문제가 발생했어요.\n${message}`);
+    } finally {
+      event.target.value = "";
     }
   };
 
-  const handleFetchAlbumPhoto = async () => {
-    try {
-      const photos = await fetchAlbumPhotos({
-        base64: true,
-        maxWidth: 1024,
-        maxCount: 1,
-      });
+  const handleOpenCamera = () => {
+    cameraInputRef.current?.click();
+  };
 
-      const firstPhoto = photos[0];
+  const handleFetchAlbumPhoto = () => {
+    albumInputRef.current?.click();
+  };
 
-      if (!firstPhoto) {
-        return;
-      }
-
-      const imageUri = firstPhoto.dataUri.startsWith("data:")
-        ? firstPhoto.dataUri
-        : `data:image/jpeg;base64,${firstPhoto.dataUri}`;
-
-      setImageSrc(imageUri);
-      await analyzeFlowerWithAI(imageUri);
-    } catch (error) {
-      if (error instanceof FetchAlbumPhotosPermissionError) {
-        alert("사진첩 권한이 필요해요. 권한을 허용한 뒤 다시 시도해 주세요.");
-        return;
-      }
-
-      console.error("앨범 불러오기 실패:", error);
-      alert("앨범에서 사진을 가져오는 중 문제가 발생했어요.");
-    }
+  const normalizeFlowerName = (name: string) => {
+    return name
+      .replace(/^추정:\s*/, "")
+      .replace(/\(추정\)/g, "")
+      .replace(/\s/g, "")
+      .trim();
   };
 
   // OpenAI GPT-4o 멀티모달 API 연동 함수
   const analyzeFlowerWithAI = async (base64Image: string) => {
     setIsAnalyzing(true);
+    setMatchedFlower(null);
 
     try {
       const response = await fetch(
@@ -162,14 +182,14 @@ export default function App() {
         name: parsedData.name,
         language: parsedData.language,
       });
+      const analyzedName = normalizeFlowerName(parsedData.name);
+
       const existingFlower = archive.find(
-        (item) => item.name === parsedData.name,
+        (item) => normalizeFlowerName(item.name) === analyzedName,
       );
 
       if (existingFlower) {
-        alert(
-          `🌼 이미 수집한 꽃이에요!\n\n첫 수집일: ${existingFlower.createdAt}`,
-        );
+        setMatchedFlower(existingFlower);
       }
     } catch (error) {
       console.error("AI 분석 실패:", error);
@@ -221,6 +241,22 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between px-6 py-4 select-none">
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleImageFile}
+      />
+
+      <input
+        ref={albumInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageFile}
+      />
       {/* 1단계: 메인 인트로 헤더 */}
       <header className="w-full text-center mt-4">
         <h1 className="text-2xl font-black text-slate-800 tracking-tight mt-3">
@@ -291,7 +327,7 @@ export default function App() {
       />
 
       <footer className="mt-8 mb-6 text-center text-xs text-slate-400">
-        © 2026 엄마는 꽃 · Apps in Toss test v8
+        © 2026 엄마는 꽃 · AI 들꽃 도감
       </footer>
 
       {/* 3단계: 분석 완료 폴라로이드 팝업 모달 */}
@@ -300,7 +336,11 @@ export default function App() {
           imageSrc={imageSrc}
           flowerName={flowerData.name}
           flowerLanguage={flowerData.language}
-          onClose={() => setFlowerData(null)}
+          matchedFlower={matchedFlower}
+          onClose={() => {
+            setFlowerData(null);
+            setMatchedFlower(null);
+          }}
           onSaveToArchive={handleSaveToArchive}
         />
       )}
