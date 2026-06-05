@@ -1,0 +1,13 @@
+{
+  "appName": "mom-is-flower",
+  "permissions": [
+    {
+      "name": "camera",
+      "access": "access"
+    },
+    {
+      "name": "photos",
+      "access": "read"
+    }
+  ]
+}
