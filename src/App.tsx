@@ -9,11 +9,23 @@ import { Camera, Image as ImageIcon } from "lucide-react";
 import PolaroidResult from "./components/PolaroidResult";
 import FlowerArchiver from "./components/FlowerArchiver";
 
+export type FlowerStory = {
+  summary: string;
+  habitat: string;
+  origin: string;
+  season: string;
+  features: string;
+  meaningOrigin: string;
+  legend: string;
+  art: string;
+};
+
 export type FlowerCard = {
   id: string;
   image: string;
   name: string;
   language: string;
+  story?: FlowerStory;
   memo?: string;
   createdAt: string;
 };
@@ -21,11 +33,24 @@ export type FlowerCard = {
 export default function App() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  type FlowerStory = {
+    summary: string;
+    habitat: string;
+    origin: string;
+    season: string;
+    features: string;
+    meaningOrigin: string;
+    legend: string;
+    art: string;
+  };
+
   const [flowerData, setFlowerData] = useState<{
     name: string;
     language: string;
+    story?: FlowerStory;
   } | null>(null);
   const [archive, setArchive] = useState<FlowerCard[]>([]);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     const savedArchive = localStorage.getItem("mom-is-flower-archive");
@@ -38,6 +63,19 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("mom-is-flower-archive", JSON.stringify(archive));
   }, [archive]);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
 
   // 스마트폰 앨범/카메라 파일 선택 처리 핸들러
   const handleOpenCamera = async () => {
@@ -124,6 +162,15 @@ export default function App() {
         name: parsedData.name,
         language: parsedData.language,
       });
+      const existingFlower = archive.find(
+        (item) => item.name === parsedData.name,
+      );
+
+      if (existingFlower) {
+        alert(
+          `🌼 이미 수집한 꽃이에요!\n\n첫 수집일: ${existingFlower.createdAt}`,
+        );
+      }
     } catch (error) {
       console.error("AI 분석 실패:", error);
       const message =
@@ -134,7 +181,11 @@ export default function App() {
     }
   };
 
-  const handleSaveToArchive = (savedImage: string, memo?: string) => {
+  const handleSaveToArchive = (
+    savedImage: string,
+    memo?: string,
+    story?: FlowerStory,
+  ) => {
     if (!flowerData) return;
 
     setArchive((prev) => [
@@ -143,11 +194,29 @@ export default function App() {
         image: savedImage,
         name: flowerData.name,
         language: flowerData.language,
+        story,
         memo,
         createdAt: new Date().toLocaleDateString("ko-KR"),
       },
       ...prev,
     ]);
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+      alert(
+        "설치 기능이 준비되지 않았어요.\n\n아이폰은 Safari의 공유 버튼 → 홈 화면에 추가를 이용해주세요.",
+      );
+      return;
+    }
+
+    deferredPrompt.prompt();
+
+    const result = await deferredPrompt.userChoice;
+
+    console.log("PWA install result:", result);
+
+    setDeferredPrompt(null);
   };
 
   return (
@@ -203,6 +272,15 @@ export default function App() {
           </div>
         )}
       </main>
+
+      <div className="w-full max-w-md mb-6">
+        <button
+          onClick={handleInstallApp}
+          className="w-full py-3 rounded-2xl bg-slate-800 text-white font-bold shadow hover:bg-slate-700 transition-all"
+        >
+          📲 앱으로 설치하기
+        </button>
+      </div>
 
       {/* 하단 도감 히스토리 판 */}
       <FlowerArchiver

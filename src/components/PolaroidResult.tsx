@@ -1,21 +1,27 @@
 import { useRef, useState } from "react";
-import { Download, X, Share2, Pencil } from "lucide-react";
+import { Download, X, Share2, Pencil, BookOpen } from "lucide-react";
 
-// 📱 앱인토스 네이티브 브릿지 타입 정의
-declare global {
-  interface Window {
-    TossWebViewBridge?: {
-      postMessage: (message: string) => void;
-    };
-  }
-}
+export type FlowerStory = {
+  summary: string;
+  habitat: string;
+  origin: string;
+  season: string;
+  features: string;
+  meaningOrigin: string;
+  legend: string;
+  art: string;
+};
 
 interface Props {
   imageSrc: string;
   flowerName: string;
   flowerLanguage: string;
   onClose: () => void;
-  onSaveToArchive: (savedImage: string, memo?: string) => void;
+  onSaveToArchive: (
+    savedImage: string,
+    memo?: string,
+    story?: FlowerStory,
+  ) => void;
 }
 
 export default function PolaroidResult({
@@ -27,8 +33,10 @@ export default function PolaroidResult({
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [memo, setMemo] = useState<string>("");
+  const [story, setStory] = useState<FlowerStory | null>(null);
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
+  const [isStoryLoading, setIsStoryLoading] = useState(false);
 
-  // 1. [핵심 기능] 캔버스 이미지 생성 로직 (기존과 동일하되 날짜 포맷 살짝 수정)
   const generatePolaroidBase64 = (): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = canvasRef.current;
@@ -107,8 +115,7 @@ export default function PolaroidResult({
         };
 
         wrapText(`꽃말 : ${flowerLanguage}`, 24, 468, 340, 22);
-        ctx.fillStyle = "#475569";
-        ctx.font = "italic 16px sans-serif";
+
         ctx.fillStyle = "#475569";
         ctx.font = "italic 15px sans-serif";
         ctx.fillText(
@@ -116,6 +123,7 @@ export default function PolaroidResult({
           24,
           510,
         );
+
         ctx.fillStyle = "#94A3B8";
         ctx.font = "13px monospace";
         const today = new Date()
@@ -126,6 +134,7 @@ export default function PolaroidResult({
           })
           .replace(/\. /g, ".")
           .slice(0, -1);
+
         ctx.fillText(today, 295, 525);
 
         resolve(canvas.toDataURL("image/png"));
@@ -133,13 +142,48 @@ export default function PolaroidResult({
     });
   };
 
-  // 2. [앱인토스 AX] 네이티브 공유 패널 띄우기 (저장/공유 공통 사용)
+  const loadFlowerStory = async () => {
+    if (story) {
+      setIsStoryOpen(true);
+      return;
+    }
+
+    setIsStoryLoading(true);
+
+    try {
+      const response = await fetch("/api/flower-story", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: flowerName,
+        }),
+      });
+
+      const parsedData: any = await response.json();
+
+      if (!response.ok) {
+        throw new Error(parsedData.error || `API error: ${response.status}`);
+      }
+
+      setStory(parsedData);
+      setIsStoryOpen(true);
+    } catch (error) {
+      console.error("꽃 이야기 불러오기 실패:", error);
+      const message =
+        error instanceof Error ? error.message : "알 수 없는 오류";
+      alert(`꽃 이야기를 불러오지 못했어요: ${message}`);
+    } finally {
+      setIsStoryLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       const finalImageBase64 = await generatePolaroidBase64();
 
-      // 앱 내부 꽃 도감에 저장
-      onSaveToArchive(finalImageBase64, memo);
+      onSaveToArchive(finalImageBase64, memo, story ?? undefined);
 
       alert("꽃 카드가 나만의 꽃 도감에 저장되었어요.");
       onClose();
@@ -172,7 +216,14 @@ export default function PolaroidResult({
       await navigator.share({
         files: [file],
         title: "엄마는꽃",
-        text: "엄마는꽃에서 만든 나만의 꽃카드예요 🌸",
+        text: `엄마는꽃에서 만든 나만의 꽃카드예요 🌸
+
+꽃 이름: ${flowerName}
+꽃말: ${flowerLanguage}
+${memo.trim() ? `메모: ${memo.trim()}` : ""}
+
+나도 꽃 이름 찾아보기
+https://mom-is-flower-app.vercel.app`,
       });
     } catch (error) {
       console.error("이미지 공유 실패:", error);
@@ -184,7 +235,6 @@ export default function PolaroidResult({
     <div className="fixed inset-0 bg-black/70 flex flex-col items-center justify-center p-6 z-50 overflow-y-auto">
       <canvas ref={canvasRef} width={400} height={540} className="hidden" />
 
-      {/* 실물 뷰어 카드 (기존과 동일) */}
       <div className="bg-white p-5 rounded-sm shadow-2xl w-full max-w-sm flex flex-col gap-4 transform transition-all animate-in fade-in zoom-in-95 duration-200">
         <div className="aspect-square w-full overflow-hidden rounded-sm bg-slate-100 relative">
           <img
@@ -199,6 +249,7 @@ export default function PolaroidResult({
             <X size={18} />
           </button>
         </div>
+
         <div className="flex flex-col gap-1.5 pt-1">
           <div className="flex justify-between items-baseline">
             <h3 className="text-xl font-bold text-slate-800">{flowerName}</h3>
@@ -213,9 +264,21 @@ export default function PolaroidResult({
                 .slice(0, -1)}
             </span>
           </div>
+
           <p className="text-sm text-pink-500 font-semibold">
             꽃말 : {flowerLanguage}
           </p>
+
+          <button
+            type="button"
+            onClick={loadFlowerStory}
+            disabled={isStoryLoading}
+            className="mt-2 w-full py-2.5 rounded-xl bg-pink-50 text-pink-600 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all disabled:opacity-60"
+          >
+            <BookOpen size={16} />
+            {isStoryLoading ? "꽃 이야기를 불러오는 중..." : "꽃 이야기"}
+          </button>
+
           <div className="mt-2 pt-2 border-t border-dashed border-slate-100">
             <p className="text-sm text-slate-600 font-medium italic min-h-[1.5rem]">
               {memo ? (
@@ -228,7 +291,6 @@ export default function PolaroidResult({
         </div>
       </div>
 
-      {/* ✍️ 메모 입력창 (기존과 동일) */}
       <div className="w-full max-w-sm mt-4 bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 flex items-center gap-2">
         <Pencil size={16} className="text-pink-300 shrink-0" />
         <input
@@ -241,9 +303,7 @@ export default function PolaroidResult({
         />
       </div>
 
-      {/* 🛠️ 개선된 액션 버튼 세트 (앱인토스 AX 연동) */}
       <div className="w-full max-w-sm flex gap-3 mt-4">
-        {/* '저장' 버튼: 이제 토스 네이티브 공유 패널을 열어 사장님이 직접 사진첩에 저장하거나 보낼 수 있게 합니다. */}
         <button
           onClick={handleSave}
           className="flex-1 py-4 bg-pink-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-pink-900/20 active:scale-[0.99] transition-all"
@@ -252,7 +312,6 @@ export default function PolaroidResult({
           저장하기
         </button>
 
-        {/* '공유하기' 버튼: 저장 버튼과 동일하게 작동하도록 임시 활성화 (사장님 요청사항) */}
         <button
           onClick={handleShare}
           className="w-16 py-4 bg-white text-slate-500 font-medium rounded-xl flex items-center justify-center shadow-lg active:scale-[0.99] transition-all"
@@ -260,6 +319,44 @@ export default function PolaroidResult({
           <Share2 size={20} />
         </button>
       </div>
+
+      {isStoryOpen && story && (
+        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-5">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[82vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-slate-800">
+                {flowerName} 꽃 이야기
+              </h3>
+              <button
+                onClick={() => setIsStoryOpen(false)}
+                className="p-1 rounded-full hover:bg-slate-100"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm text-slate-600 leading-relaxed">
+              <StorySection title="짧은 소개" text={story.summary} />
+              <StorySection title="주로 피는 곳" text={story.habitat} />
+              <StorySection title="원산지와 유래" text={story.origin} />
+              <StorySection title="피는 시기" text={story.season} />
+              <StorySection title="생김새와 특성" text={story.features} />
+              <StorySection title="꽃말의 배경" text={story.meaningOrigin} />
+              <StorySection title="설화와 민속" text={story.legend} />
+              <StorySection title="문학과 예술" text={story.art} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function StorySection({ title, text }: { title: string; text?: string }) {
+  return (
+    <section>
+      <h4 className="text-sm font-bold text-pink-500 mb-1">{title}</h4>
+      <p>{text || "정보 없음"}</p>
+    </section>
   );
 }
