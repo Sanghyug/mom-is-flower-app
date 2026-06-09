@@ -248,7 +248,7 @@ export default function App() {
   const handleInstallApp = async () => {
     if (!deferredPrompt) {
       alert(
-        "설치 기능이 준비되지 않았어요.\n\n아이폰은 Safari의 공유 버튼 → 홈 화면에 추가를 이용해주세요.",
+        "홈 화면에 추가하는 방법입니다.\n\n안드로이드 Chrome/Samsung Internet:\n오른쪽 위 메뉴(⋮ 또는 ≡) → 홈 화면에 추가 또는 앱 설치\n\n아이폰 Safari:\n공유 버튼 → 홈 화면에 추가\n\n설치 버튼이 바로 뜨지 않아도 위 방법으로 추가할 수 있어요.",
       );
       return;
     }
@@ -512,7 +512,7 @@ export default function App() {
           onClick={handleInstallApp}
           className="w-full py-3 rounded-2xl bg-slate-800 text-white font-bold shadow hover:bg-slate-700 transition-all"
         >
-          📲 앱으로 설치하기
+          📲 홈 화면에 추가하기
         </button>
 
         <div className="mt-4 rounded-3xl border border-pink-100 bg-pink-50/60 p-5 text-center shadow-sm">
