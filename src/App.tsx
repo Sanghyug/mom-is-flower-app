@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Image as ImageIcon, BookOpen } from "lucide-react";
 import PolaroidResult from "./components/PolaroidResult";
 import FlowerArchiver from "./components/FlowerArchiver";
+import SplashScreen from "./components/SplashScreen";
 
 
 export type FlowerStory = {
@@ -26,6 +27,8 @@ export type FlowerCard = {
 };
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [flowerData, setFlowerData] = useState<{
@@ -39,6 +42,16 @@ export default function App() {
   const albumInputRef = useRef<HTMLInputElement>(null);
   const archiveSectionRef = useRef<HTMLDivElement>(null);
   const [matchedFlower, setMatchedFlower] = useState<FlowerCard | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowSplash(false);
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const savedArchive = localStorage.getItem("mom-is-flower-archive");
@@ -374,6 +387,10 @@ export default function App() {
       block: "start",
     });
   };
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between px-6 py-4 select-none">
