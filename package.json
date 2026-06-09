@@ -5,13 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "ait build",
-    "web:build": "tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@apps-in-toss/web-framework": "^2.6.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",

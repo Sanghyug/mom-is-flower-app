@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, X, Share2, Pencil, BookOpen } from "lucide-react";
 import type { FlowerCard } from "../App";
 
@@ -39,7 +39,20 @@ export default function PolaroidResult({
   const [story, setStory] = useState<FlowerStory | null>(null);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [isStoryLoading, setIsStoryLoading] = useState(false);
-  const [shareCount, setShareCount] = useState(0);
+  const [shareCount, setShareCount] = useState(() => {
+    const saved = localStorage.getItem("mom-is-flower-share-count");
+    return saved ? Number(saved) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("mom-is-flower-share-count", String(shareCount));
+  }, [shareCount]);
+
+  useEffect(() => {
+    if (matchedFlower?.story) {
+      setStory(matchedFlower.story);
+    }
+  }, [matchedFlower]);
 
   const generatePolaroidBase64 = (): Promise<string> => {
     return new Promise((resolve) => {
@@ -149,7 +162,7 @@ export default function PolaroidResult({
   const loadFlowerStory = async () => {
     if (shareCount < 3) {
       alert(
-        `친구 3명에게 꽃카드를 공유하면 이 꽃에 대한 다양한 이야기를 볼 수 있어요 🌸\n\n현재 공유: ${shareCount}/3`,
+        `꽃카드를 3번 공유하면 이 꽃에 대한 다양한 이야기를 볼 수 있어요 🌸\n\n현재 공유: ${shareCount}/3`,
       );
       return;
     }
@@ -233,7 +246,7 @@ export default function PolaroidResult({
 ${memo.trim() ? `메모: ${memo.trim()}` : ""}
 
 나도 길가의 꽃 이름을 찾아보기
-https://mom-is-flower-app.vercel.app`,
+https://mom-is-flower.vercel.app`,
       });
 
       setShareCount((prev) => Math.min(prev + 1, 3));
@@ -298,7 +311,7 @@ https://mom-is-flower-app.vercel.app`,
             className="mt-2 w-full py-2.5 rounded-xl bg-pink-50 text-pink-600 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all disabled:opacity-60"
           >
             <BookOpen size={16} />
-            {isStoryLoading ? "꽃 이야기를 불러오는 중..." : "꽃 이야기"}
+            {isStoryLoading ? "꽃 이야기를 불러오는 중..." : `꽃 이야기 ${Math.min(shareCount, 3)}/3`}
           </button>
 
           <div className="mt-2 pt-2 border-t border-dashed border-slate-100">

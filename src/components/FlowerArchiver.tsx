@@ -10,6 +10,18 @@ interface Props {
 export default function FlowerArchiver({ archive, onDelete }: Props) {
   const [selected, setSelected] = useState<FlowerCard | null>(null);
 
+  const uniqueFlowerCount = new Set(
+    archive.map((card) => card.name.replace(/\s/g, "").trim()),
+  ).size;
+
+  const level =
+    uniqueFlowerCount >= 30
+      ? "꽃도감 레벨 3"
+      : uniqueFlowerCount >= 10
+        ? "꽃도감 레벨 2"
+        : "꽃도감 레벨 1";
+
+
   const handleShare = async (card: FlowerCard) => {
     try {
       const response = await fetch(card.image);
@@ -48,12 +60,18 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
 
   return (
     <div className="w-full max-w-md border-t border-slate-100 pt-6 mb-4">
-      <h2 className="text-base font-bold text-slate-800 flex items-center gap-1.5 mb-4">
-        나만의 꽃 도감 🗂️
-        <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full font-semibold">
-          {archive.length}송이
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
+          나만의 꽃 도감 🗂️
+          <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full font-semibold">
+            {archive.length}송이
+          </span>
+        </h2>
+
+        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-bold">
+          {level}
         </span>
-      </h2>
+      </div>
 
       {archive.length === 0 ? (
         <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
@@ -100,6 +118,23 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
               alt={selected.name}
               className="w-full rounded-xl"
             />
+
+            <div className="mt-3">
+              <h3 className="text-lg font-black text-slate-800">
+                {selected.name}
+              </h3>
+              <p className="text-sm font-semibold text-pink-500 mt-1">
+                꽃말 : {selected.language}
+              </p>
+              {selected.memo && (
+                <p className="text-sm text-slate-500 mt-2">✍️ {selected.memo}</p>
+              )}
+              {selected.story && (
+                <p className="text-xs text-slate-400 mt-2">
+                  꽃 이야기가 저장되어 있어요.
+                </p>
+              )}
+            </div>
 
             <div className="flex gap-3 mt-4">
               <button
