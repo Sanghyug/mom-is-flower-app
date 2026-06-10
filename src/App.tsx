@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import ReactGA from "react-ga4";
 import { Camera, Image as ImageIcon, BookOpen } from "lucide-react";
 import PolaroidResult from "./components/PolaroidResult";
 import FlowerArchiver from "./components/FlowerArchiver";
 import SplashScreen from "./components/SplashScreen";
-
 
 export type FlowerStory = {
   summary: string;
@@ -61,13 +59,6 @@ export default function App() {
       setArchive(JSON.parse(savedArchive));
     }
   }, []);
-
-  useEffect(() => {
-  ReactGA.send({
-    hitType: "pageview",
-    page: window.location.pathname,
-  });
-}, []);
 
   useEffect(() => {
     localStorage.setItem("mom-is-flower-archive", JSON.stringify(archive));
@@ -181,18 +172,15 @@ export default function App() {
     setMatchedFlower(null);
 
     try {
-      const response = await fetch(
-        "/api/analyze-flower",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            image: base64Image,
-          }),
+      const response = await fetch("/api/analyze-flower", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          image: base64Image,
+        }),
+      });
 
       const parsedData = await response.json();
 
@@ -239,14 +227,12 @@ export default function App() {
       );
 
       const nextCard: FlowerCard = {
-        id:
-          existingIndex >= 0
-            ? prev[existingIndex].id
-            : crypto.randomUUID(),
+        id: existingIndex >= 0 ? prev[existingIndex].id : crypto.randomUUID(),
         image: savedImage,
         name: flowerData.name,
         language: flowerData.language,
-        story: story ?? (existingIndex >= 0 ? prev[existingIndex].story : undefined),
+        story:
+          story ?? (existingIndex >= 0 ? prev[existingIndex].story : undefined),
         memo,
         createdAt:
           existingIndex >= 0
@@ -383,11 +369,11 @@ export default function App() {
     flowerLevelInfo.nextTarget === null
       ? 100
       : Math.min(
-        100,
-        ((archive.length - previousTarget) /
-          (flowerLevelInfo.nextTarget - previousTarget)) *
-        100,
-      );
+          100,
+          ((archive.length - previousTarget) /
+            (flowerLevelInfo.nextTarget - previousTarget)) *
+            100,
+        );
 
   const handleOpenArchive = () => {
     archiveSectionRef.current?.scrollIntoView({
@@ -519,9 +505,7 @@ export default function App() {
 
       <div className="w-full max-w-md my-5 flex items-center">
         <div className="flex-1 border-t border-dashed border-pink-100" />
-        <span className="px-3 text-xs text-slate-400">
-          더 알아보기
-        </span>
+        <span className="px-3 text-xs text-slate-400">더 알아보기</span>
         <div className="flex-1 border-t border-dashed border-pink-100" />
       </div>
 
@@ -564,9 +548,7 @@ export default function App() {
               />
 
               <div className="text-left">
-                <div className="text-lg font-black text-pink-500">
-                  내짤4짤
-                </div>
+                <div className="text-lg font-black text-pink-500">내짤4짤</div>
 
                 <div className="text-sm leading-5 text-slate-500 mt-1">
                   서랍에서 뒹굴고 있는 네컷사진을
