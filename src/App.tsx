@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ReactGA from "react-ga4";
 import { Camera, Image as ImageIcon, BookOpen } from "lucide-react";
 import PolaroidResult from "./components/PolaroidResult";
 import FlowerArchiver from "./components/FlowerArchiver";
@@ -60,6 +61,13 @@ export default function App() {
       setArchive(JSON.parse(savedArchive));
     }
   }, []);
+
+  useEffect(() => {
+  ReactGA.send({
+    hitType: "pageview",
+    page: window.location.pathname,
+  });
+}, []);
 
   useEffect(() => {
     localStorage.setItem("mom-is-flower-archive", JSON.stringify(archive));
