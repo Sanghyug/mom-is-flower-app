@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mom-is-flower.vercel.app/sitemap.xml
