@@ -9,6 +9,17 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
 
+      workbox: {
+        navigateFallbackDenylist: [
+          /^\/robots\.txt$/,
+          /^\/sitemap\.xml$/,
+          /^\/favicon\.png$/,
+          /^\/app_icon\.png$/,
+          /^\/app_icon_192\.png$/,
+          /^\/mom-is-flower-share\.png$/,
+        ],
+      },
+
       manifest: {
         name: "엄마는꽃",
         short_name: "엄마는꽃",
