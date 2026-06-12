@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/((?!robots\\.txt|sitemap\\.xml|favicon\\.png|app_icon\\.png|app_icon_192\\.png|mom-is-flower-share\\.png|splash\\.png|assets/.*).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
