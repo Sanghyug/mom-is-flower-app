@@ -3,6 +3,8 @@ import { Camera, Image as ImageIcon, BookOpen } from "lucide-react";
 import PolaroidResult from "./components/PolaroidResult";
 import FlowerArchiver from "./components/FlowerArchiver";
 import SplashScreen from "./components/SplashScreen";
+import { collection, doc, setDoc } from "firebase/firestore";
+import { db, ensureAnonymousLogin } from "./firebase";
 
 export type FlowerStory = {
   summary: string;
@@ -58,6 +60,14 @@ export default function App() {
     if (savedArchive) {
       setArchive(JSON.parse(savedArchive));
     }
+  }, []);
+
+  useEffect(() => {
+    ensureAnonymousLogin()
+      .then((user) => {
+        console.log("익명 로그인:", user.uid);
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -206,40 +216,46 @@ export default function App() {
       console.error("AI 분석 실패:", error);
       const message =
         error instanceof Error ? error.message : "알 수 없는 오류";
+      setFlowerData({
+        name: "테스트꽃",
+        language: "기억",
+      });
       alert(`꽃 분석 실패: ${message}`);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleSaveToArchive = (
+  const handleSaveToArchive = async (
     savedImage: string,
     memo?: string,
     story?: FlowerStory,
   ) => {
     if (!flowerData) return;
 
+    const user = await ensureAnonymousLogin();
     const normalizedName = normalizeFlowerName(flowerData.name);
 
+    const existingIndex = archive.findIndex(
+      (item) => normalizeFlowerName(item.name) === normalizedName,
+    );
+
+    const nextCard: FlowerCard = {
+      id: existingIndex >= 0 ? archive[existingIndex].id : crypto.randomUUID(),
+      image: savedImage,
+      name: flowerData.name,
+      language: flowerData.language,
+      story:
+        story ??
+        (existingIndex >= 0 ? archive[existingIndex].story : undefined),
+      memo,
+      createdAt:
+        existingIndex >= 0
+          ? archive[existingIndex].createdAt
+          : new Date().toLocaleDateString("ko-KR"),
+    };
+
     setArchive((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => normalizeFlowerName(item.name) === normalizedName,
-      );
-
-      const nextCard: FlowerCard = {
-        id: existingIndex >= 0 ? prev[existingIndex].id : crypto.randomUUID(),
-        image: savedImage,
-        name: flowerData.name,
-        language: flowerData.language,
-        story:
-          story ?? (existingIndex >= 0 ? prev[existingIndex].story : undefined),
-        memo,
-        createdAt:
-          existingIndex >= 0
-            ? prev[existingIndex].createdAt
-            : new Date().toLocaleDateString("ko-KR"),
-      };
-
       if (existingIndex < 0) {
         return [nextCard, ...prev];
       }
@@ -250,6 +266,25 @@ export default function App() {
         ...prev.slice(existingIndex + 1),
       ];
     });
+
+    const firestoreCardData = {
+      id: nextCard.id,
+      image: nextCard.image,
+      name: nextCard.name,
+      language: nextCard.language,
+      memo: nextCard.memo ?? "",
+      createdAt: nextCard.createdAt,
+      uid: user.uid,
+      updatedAt: new Date().toISOString(),
+      ...(nextCard.story ? { story: nextCard.story } : {}),
+    };
+
+    await setDoc(
+      doc(collection(db, "flower_cards"), nextCard.id),
+      firestoreCardData,
+    );
+
+    console.log("Firestore 저장 완료:", nextCard.id);
   };
 
   const handleInstallApp = async () => {
