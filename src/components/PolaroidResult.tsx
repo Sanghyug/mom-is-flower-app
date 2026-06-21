@@ -59,6 +59,15 @@ export default function PolaroidResult({
   const [story, setStory] = useState<FlowerStory | null>(null);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [isStoryLoading, setIsStoryLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+
+    window.setTimeout(() => {
+      setToastMessage(null);
+    }, 2200);
+  };
   const [shareCount, setShareCount] = useState(() => {
     const saved = localStorage.getItem("mom-is-flower-share-count");
     return saved ? Number(saved) : 0;
@@ -183,11 +192,12 @@ export default function PolaroidResult({
 
   const loadFlowerStory = async () => {
     if (shareCount < 3) {
-      alert(
-        `꽃카드를 3번 공유하면 이 꽃에 대한 다양한 이야기를 볼 수 있어요 🌸\n\n현재 공유: ${shareCount}/3`,
+      showToast(
+        `꽃카드를 3번 공유하면 이 꽃에 대한 다양한 이야기를 볼 수 있어요 🌸 현재 공유: ${shareCount}/3`,
       );
       return;
     }
+
     if (story) {
       setIsStoryOpen(true);
       return;
@@ -219,7 +229,7 @@ export default function PolaroidResult({
       console.error("꽃 이야기 불러오기 실패:", error);
       const message =
         error instanceof Error ? error.message : "알 수 없는 오류";
-      alert(`꽃 이야기를 불러오지 못했어요: ${message}`);
+      showToast(`꽃 이야기를 불러오지 못했어요: ${message}`);
     } finally {
       setIsStoryLoading(false);
     }
@@ -231,12 +241,14 @@ export default function PolaroidResult({
 
       await onSaveToArchive(finalImageBase64, memo, story ?? undefined);
 
-      alert("꽃 카드가 나만의 꽃 도감에 저장되었어요.");
+      showToast("꽃 카드가 나만의 꽃 도감에 저장되었어요.");
 
-      onClose();
+      window.setTimeout(() => {
+        onClose();
+      }, 900);
     } catch (error) {
       console.error("저장 중 오류:", error);
-      alert("저장 중 오류가 발생했습니다.");
+      showToast("저장 중 오류가 발생했습니다.");
     }
   };
 
@@ -251,12 +263,12 @@ export default function PolaroidResult({
       });
 
       if (!navigator.share) {
-        alert("현재 환경에서는 공유 기능을 지원하지 않아요.");
+        showToast("현재 환경에서는 공유 기능을 지원하지 않아요.");
         return;
       }
 
       if (navigator.canShare && !navigator.canShare({ files: [file] })) {
-        alert("현재 환경에서는 이미지 파일 공유를 지원하지 않아요.");
+        showToast("현재 환경에서는 이미지 파일 공유를 지원하지 않아요.");
         return;
       }
 
@@ -286,7 +298,7 @@ https://mom-is-flower.vercel.app`,
       setShareCount((prev) => Math.min(prev + 1, 3));
     } catch (error) {
       console.error("이미지 공유 실패:", error);
-      alert("꽃카드 이미지 공유 중 문제가 발생했어요.");
+      showToast("꽃카드 이미지 공유 중 문제가 발생했어요.");
     }
   };
 
@@ -419,6 +431,11 @@ https://mom-is-flower.vercel.app`,
               <StorySection title="문학과 예술" text={story.art} />
             </div>
           </div>
+        </div>
+      )}
+      {toastMessage && (
+        <div className="fixed bottom-24 left-1/2 z-[80] w-[calc(100%-48px)] max-w-sm -translate-x-1/2 rounded-2xl bg-slate-900/90 px-5 py-4 text-center text-sm font-bold text-white shadow-2xl">
+          {toastMessage}
         </div>
       )}
     </div>
