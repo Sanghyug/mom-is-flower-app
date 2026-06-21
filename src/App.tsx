@@ -22,6 +22,8 @@ export type FlowerCard = {
   image: string;
   name: string;
   language: string;
+  nameEn?: string;
+  languageEn?: string;
   story?: FlowerStory;
   memo?: string;
   createdAt: string;
@@ -35,6 +37,8 @@ export default function App() {
   const [flowerData, setFlowerData] = useState<{
     name: string;
     language: string;
+    nameEn?: string;
+    languageEn?: string;
     story?: FlowerStory;
   } | null>(null);
   const [archive, setArchive] = useState<FlowerCard[]>([]);
@@ -43,6 +47,9 @@ export default function App() {
   const albumInputRef = useRef<HTMLInputElement>(null);
   const archiveSectionRef = useRef<HTMLDivElement>(null);
   const [matchedFlower, setMatchedFlower] = useState<FlowerCard | null>(null);
+  const lang: "ko" | "en" = navigator.language.toLowerCase().startsWith("en")
+    ? "en"
+    : "ko";
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -206,6 +213,8 @@ export default function App() {
       setFlowerData({
         name: parsedData.name,
         language: parsedData.language,
+        nameEn: parsedData.nameEn ?? parsedData.englishName,
+        languageEn: parsedData.languageEn ?? parsedData.englishLanguage,
       });
       const analyzedName = normalizeFlowerName(parsedData.name);
 
@@ -246,6 +255,8 @@ export default function App() {
       image: savedImage,
       name: flowerData.name,
       language: flowerData.language,
+      nameEn: flowerData.nameEn,
+      languageEn: flowerData.languageEn,
       story:
         story ??
         (existingIndex >= 0 ? archive[existingIndex].story : undefined),
@@ -601,6 +612,7 @@ export default function App() {
       <div ref={archiveSectionRef} className="w-full max-w-md">
         <FlowerArchiver
           archive={archive}
+          lang={lang}
           onDelete={(id) =>
             setArchive((prev) => prev.filter((card) => card.id !== id))
           }
@@ -617,6 +629,9 @@ export default function App() {
           imageSrc={imageSrc}
           flowerName={flowerData.name}
           flowerLanguage={flowerData.language}
+          flowerNameEn={flowerData.nameEn}
+          flowerLanguageEn={flowerData.languageEn}
+          lang={lang}
           matchedFlower={matchedFlower}
           onClose={() => {
             setFlowerData(null);

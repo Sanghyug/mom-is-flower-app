@@ -4,10 +4,11 @@ import type { FlowerCard } from "../App";
 
 interface Props {
   archive: FlowerCard[];
+  lang: "ko" | "en";
   onDelete: (id: string) => void;
 }
 
-export default function FlowerArchiver({ archive, onDelete }: Props) {
+export default function FlowerArchiver({ archive, lang, onDelete }: Props) {
   const [selected, setSelected] = useState<FlowerCard | null>(null);
 
   const uniqueFlowerCount = new Set(
@@ -20,7 +21,6 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
       : uniqueFlowerCount >= 10
         ? "꽃도감 레벨 2"
         : "꽃도감 레벨 1";
-
 
   const handleShare = async (card: FlowerCard) => {
     try {
@@ -127,7 +127,9 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
                 꽃말 : {selected.language}
               </p>
               {selected.memo && (
-                <p className="text-sm text-slate-500 mt-2">✍️ {selected.memo}</p>
+                <p className="text-sm text-slate-500 mt-2">
+                  ✍️ {selected.memo}
+                </p>
               )}
               {selected.story && (
                 <p className="text-xs text-slate-400 mt-2">

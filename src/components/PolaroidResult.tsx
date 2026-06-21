@@ -17,8 +17,12 @@ interface Props {
   imageSrc: string;
   flowerName: string;
   flowerLanguage: string;
+  flowerNameEn?: string;
+  flowerLanguageEn?: string;
+  lang: "ko" | "en";
   matchedFlower?: FlowerCard | null;
   onClose: () => void;
+
   onSaveToArchive: (
     savedImage: string,
     memo?: string,
@@ -30,11 +34,27 @@ export default function PolaroidResult({
   imageSrc,
   flowerName,
   flowerLanguage,
+  flowerNameEn,
+  flowerLanguageEn,
+  lang,
   matchedFlower,
   onClose,
   onSaveToArchive,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const displayFlowerName =
+    lang === "en" ? flowerNameEn || flowerName : flowerName;
+
+  const displayFlowerLanguage =
+    lang === "en" ? flowerLanguageEn || flowerLanguage : flowerLanguage;
+
+  const flowerMeaningLabel = lang === "en" ? "Flower meaning" : "꽃말";
+
+  const defaultMemo =
+    lang === "en"
+      ? "A happy day with a beautiful flower"
+      : "예쁜 꽃을 마주친 행복한 날";
   const [memo, setMemo] = useState<string>("");
   const [story, setStory] = useState<FlowerStory | null>(null);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
@@ -100,7 +120,7 @@ export default function PolaroidResult({
 
         ctx.fillStyle = "#1E293B";
         ctx.font = "bold 24px sans-serif";
-        ctx.fillText(flowerName, 24, 415);
+        ctx.fillText(displayFlowerName, 24, 415);
 
         ctx.fillStyle = "#EC4899";
         ctx.font = "bold 15px sans-serif";
@@ -131,15 +151,17 @@ export default function PolaroidResult({
           ctx.fillText(line, x, y);
         };
 
-        wrapText(`꽃말 : ${flowerLanguage}`, 24, 468, 340, 22);
+        wrapText(
+          `${flowerMeaningLabel} : ${displayFlowerLanguage}`,
+          24,
+          468,
+          340,
+          22,
+        );
 
         ctx.fillStyle = "#475569";
         ctx.font = "italic 15px sans-serif";
-        ctx.fillText(
-          `✍️ ${memo.trim() || "예쁜 꽃을 마주친 행복한 날"}`,
-          24,
-          510,
-        );
+        ctx.fillText(`✍️ ${memo.trim() || defaultMemo}`, 24, 510);
 
         ctx.fillStyle = "#94A3B8";
         ctx.font = "13px monospace";
@@ -180,7 +202,8 @@ export default function PolaroidResult({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: flowerName,
+          name: displayFlowerName,
+          lang: lang,
         }),
       });
 
@@ -240,10 +263,20 @@ export default function PolaroidResult({
       await navigator.share({
         files: [file],
         title: "엄마는꽃",
-        text: `엄마는꽃에서 만든 꽃카드예요 🌸
+        text:
+          lang === "en"
+            ? `A flower card made with Mom is Flower 🌸
 
-꽃 이름: ${flowerName}
-꽃말: ${flowerLanguage}
+Flower name: ${displayFlowerName}
+Flower meaning: ${displayFlowerLanguage}
+${memo.trim() ? `Memo: ${memo.trim()}` : ""}
+
+Find the names of flowers around you
+https://mom-is-flower.vercel.app`
+            : `엄마는꽃에서 만든 꽃카드예요 🌸
+
+꽃 이름: ${displayFlowerName}
+꽃말: ${displayFlowerLanguage}
 ${memo.trim() ? `메모: ${memo.trim()}` : ""}
 
 나도 길가의 꽃 이름을 찾아보기
@@ -278,7 +311,9 @@ https://mom-is-flower.vercel.app`,
 
         <div className="flex flex-col gap-1.5 pt-1">
           <div className="flex justify-between items-baseline">
-            <h3 className="text-xl font-bold text-slate-800">{flowerName}</h3>
+            <h3 className="text-xl font-bold text-slate-800">
+              {displayFlowerName}
+            </h3>
             <span className="text-xs text-slate-400 font-mono">
               {new Date()
                 .toLocaleDateString("ko-KR", {
@@ -292,7 +327,7 @@ https://mom-is-flower.vercel.app`,
           </div>
 
           <p className="text-sm text-pink-500 font-semibold">
-            꽃말 : {flowerLanguage}
+            꽃말 : {displayFlowerLanguage}
           </p>
 
           {matchedFlower && (
@@ -363,7 +398,7 @@ https://mom-is-flower.vercel.app`,
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[82vh] overflow-y-auto p-5">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-black text-slate-800">
-                {flowerName} 꽃 이야기
+                {displayFlowerName} 꽃 이야기
               </h3>
               <button
                 onClick={() => setIsStoryOpen(false)}

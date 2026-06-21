@@ -43,7 +43,7 @@ export default async function handler(req: any, res: any) {
             content: [
               {
                 type: "text",
-                text: '사진 속 식물이나 꽃의 이름을 한국어로 정확히 찾고, 해당 꽃의 일반적으로 알려진 대표 꽃말을 한국어로 짧게 알려줘. 창작 위로문장은 만들지 말고, 꽃말을 모르면 "꽃말 정보 없음"이라고 답해줘. 반드시 다음 JSON 포맷으로만 응답해줘: {"name": "꽃이름", "language": "대표 꽃말"}',
+                text: '사진 속 식물이나 꽃의 이름을 정확히 찾고, 해당 꽃의 일반적으로 알려진 대표 꽃말을 짧게 알려줘. 창작 위로문장은 만들지 마. 한국어 이름과 한국어 꽃말, 영어 이름과 영어 꽃말을 모두 제공해줘. 꽃말을 모르면 한국어는 "꽃말 정보 없음", 영어는 "No flower meaning found"라고 답해줘. 반드시 다음 JSON 포맷으로만 응답해줘: {"name": "한국어 꽃이름", "language": "한국어 대표 꽃말", "nameEn": "English flower name", "languageEn": "Representative flower meaning in English"}',
               },
               {
                 type: "image_url",
