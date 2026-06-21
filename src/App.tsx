@@ -612,7 +612,6 @@ export default function App() {
       <div ref={archiveSectionRef} className="w-full max-w-md">
         <FlowerArchiver
           archive={archive}
-          lang={lang}
           onDelete={(id) =>
             setArchive((prev) => prev.filter((card) => card.id !== id))
           }

@@ -4,11 +4,10 @@ import type { FlowerCard } from "../App";
 
 interface Props {
   archive: FlowerCard[];
-  lang: "ko" | "en";
   onDelete: (id: string) => void;
 }
 
-export default function FlowerArchiver({ archive, lang, onDelete }: Props) {
+export default function FlowerArchiver({ archive, onDelete }: Props) {
   const [selected, setSelected] = useState<FlowerCard | null>(null);
 
   const uniqueFlowerCount = new Set(
