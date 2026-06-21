@@ -23,7 +23,7 @@ interface Props {
     savedImage: string,
     memo?: string,
     story?: FlowerStory,
-  ) => void;
+  ) => Promise<void>;
 }
 
 export default function PolaroidResult({
@@ -206,9 +206,10 @@ export default function PolaroidResult({
     try {
       const finalImageBase64 = await generatePolaroidBase64();
 
-      onSaveToArchive(finalImageBase64, memo, story ?? undefined);
+      await onSaveToArchive(finalImageBase64, memo, story ?? undefined);
 
       alert("꽃 카드가 나만의 꽃 도감에 저장되었어요.");
+
       onClose();
     } catch (error) {
       console.error("저장 중 오류:", error);
@@ -311,7 +312,9 @@ https://mom-is-flower.vercel.app`,
             className="mt-2 w-full py-2.5 rounded-xl bg-pink-50 text-pink-600 text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all disabled:opacity-60"
           >
             <BookOpen size={16} />
-            {isStoryLoading ? "꽃 이야기를 불러오는 중..." : `꽃 이야기 ${Math.min(shareCount, 3)}/3`}
+            {isStoryLoading
+              ? "꽃 이야기를 불러오는 중..."
+              : `꽃 이야기 ${Math.min(shareCount, 3)}/3`}
           </button>
 
           <div className="mt-2 pt-2 border-t border-dashed border-slate-100">

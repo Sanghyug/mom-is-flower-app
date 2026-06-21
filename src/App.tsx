@@ -216,10 +216,7 @@ export default function App() {
       console.error("AI 분석 실패:", error);
       const message =
         error instanceof Error ? error.message : "알 수 없는 오류";
-      setFlowerData({
-        name: "테스트꽃",
-        language: "기억",
-      });
+
       alert(`꽃 분석 실패: ${message}`);
     } finally {
       setIsAnalyzing(false);
