@@ -154,7 +154,7 @@ export default function PolaroidResult({
 
         ctx.fillText(today, 295, 525);
 
-        resolve(canvas.toDataURL("image/png"));
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
       };
     });
   };
