@@ -71,7 +71,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("mom-is-flower-archive", JSON.stringify(archive));
+    try {
+      localStorage.setItem("mom-is-flower-archive", JSON.stringify(archive));
+    } catch (error) {
+      console.error("localStorage 저장 실패:", error);
+    }
   }, [archive]);
 
   useEffect(() => {
