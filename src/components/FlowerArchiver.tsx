@@ -29,10 +29,24 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
         type: "image/png",
       });
 
+      const isEnglishCard = !!card.nameEn;
+
+      const title = isEnglishCard
+        ? `${card.name} Flower Card`
+        : `${card.name} 꽃 카드`;
+
+      const meaningLabel = isEnglishCard
+        ? "Flower meaning"
+        : "꽃말";
+
+      const memoLabel = isEnglishCard
+        ? "Memo"
+        : "메모";
+
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: `${card.name} 꽃 카드`,
-          text: `꽃말: ${card.language}`,
+          title,
+          text: `${meaningLabel}: ${card.language}`,
           files: [file],
         });
         return;
@@ -40,10 +54,9 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
 
       if (navigator.share) {
         await navigator.share({
-          title: `${card.name} 꽃 카드`,
-          text: `${card.name}\n꽃말: ${card.language}${
-            card.memo ? `\n메모: ${card.memo}` : ""
-          }`,
+          title,
+          text: `${card.name}\n${meaningLabel}: ${card.language}${card.memo ? `\n${memoLabel}: ${card.memo}` : ""
+            }`,
         });
         return;
       }
@@ -123,7 +136,11 @@ export default function FlowerArchiver({ archive, onDelete }: Props) {
                 {selected.name}
               </h3>
               <p className="text-sm font-semibold text-pink-500 mt-1">
-                꽃말 : {selected.language}
+                {/^[A-Za-z\s-]+$/.test(selected.name)
+                  ? "Flower meaning"
+                  : "꽃말"}
+                {" : "}
+                {selected.language}
               </p>
               {selected.memo && (
                 <p className="text-sm text-slate-500 mt-2">

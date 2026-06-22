@@ -85,7 +85,12 @@ export default function PolaroidResult({
     }
   }, [matchedFlower]);
 
-  const generatePolaroidBase64 = (): Promise<string> => {
+  const generatePolaroidBase64 = (
+    cardName: string,
+    cardLanguage: string,
+    meaningLabel: string,
+    cardMemo: string,
+  ): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -131,7 +136,7 @@ export default function PolaroidResult({
 
         ctx.fillStyle = "#1E293B";
         ctx.font = "bold 24px sans-serif";
-        ctx.fillText(displayFlowerName, 24, 415);
+        ctx.fillText(cardName, 24, 415);
 
         ctx.fillStyle = "#EC4899";
         ctx.font = "bold 15px sans-serif";
@@ -163,7 +168,7 @@ export default function PolaroidResult({
         };
 
         wrapText(
-          `${flowerMeaningLabel} : ${displayFlowerLanguage}`,
+          `${meaningLabel} : ${cardLanguage}`,
           24,
           468,
           340,
@@ -172,7 +177,7 @@ export default function PolaroidResult({
 
         ctx.fillStyle = "#475569";
         ctx.font = "italic 15px sans-serif";
-        ctx.fillText(`✍️ ${memo.trim() || defaultMemo}`, 24, 510);
+        ctx.fillText(`✍️ ${cardMemo.trim() || defaultMemo}`, 24, 510);
 
         ctx.fillStyle = "#94A3B8";
         ctx.font = "13px monospace";
@@ -239,7 +244,12 @@ export default function PolaroidResult({
 
   const handleSave = async () => {
     try {
-      const finalImageBase64 = await generatePolaroidBase64();
+      const finalImageBase64 = await generatePolaroidBase64(
+        displayFlowerName,
+        displayFlowerLanguage,
+        flowerMeaningLabel,
+        memo,
+      );
 
       await onSaveToArchive(
         finalImageBase64,
@@ -262,7 +272,12 @@ export default function PolaroidResult({
 
   const handleShare = async () => {
     try {
-      const finalImageBase64 = await generatePolaroidBase64();
+      const finalImageBase64 = await generatePolaroidBase64(
+        displayFlowerName,
+        displayFlowerLanguage,
+        flowerMeaningLabel,
+        memo,
+      );
 
       const blob = await fetch(finalImageBase64).then((res) => res.blob());
 
@@ -347,7 +362,7 @@ https://mom-is-flower.vercel.app`,
           </div>
 
           <p className="text-sm text-pink-500 font-semibold">
-            꽃말 : {displayFlowerLanguage}
+            {flowerMeaningLabel} : {displayFlowerLanguage}
           </p>
 
           {matchedFlower && (
