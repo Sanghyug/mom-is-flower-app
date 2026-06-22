@@ -210,11 +210,23 @@ export default function App() {
       }
 
       // 3. 받아온 진짜 데이터를 상태에 주입
+      console.log("AI parsedData:", parsedData);
+
       setFlowerData({
         name: parsedData.name,
         language: parsedData.language,
-        nameEn: parsedData.nameEn ?? parsedData.englishName,
-        languageEn: parsedData.languageEn ?? parsedData.englishLanguage,
+        nameEn:
+          parsedData.nameEn ??
+          parsedData.englishName ??
+          parsedData.flowerNameEn ??
+          parsedData.name_en ??
+          parsedData.english_name,
+        languageEn:
+          parsedData.languageEn ??
+          parsedData.englishLanguage ??
+          parsedData.flowerLanguageEn ??
+          parsedData.language_en ??
+          parsedData.english_language,
       });
       const analyzedName = normalizeFlowerName(parsedData.name);
 
