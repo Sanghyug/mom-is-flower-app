@@ -47,9 +47,7 @@ export default function App() {
   const albumInputRef = useRef<HTMLInputElement>(null);
   const archiveSectionRef = useRef<HTMLDivElement>(null);
   const [matchedFlower, setMatchedFlower] = useState<FlowerCard | null>(null);
-  const lang: "ko" | "en" = navigator.language.toLowerCase().startsWith("en")
-    ? "en"
-    : "ko";
+  const lang: "ko" | "en" = "en";
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
