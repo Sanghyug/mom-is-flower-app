@@ -240,6 +240,8 @@ export default function App() {
     savedImage: string,
     memo?: string,
     story?: FlowerStory,
+    displayName?: string,
+    displayLanguage?: string,
   ) => {
     if (!flowerData) return;
 
@@ -253,8 +255,8 @@ export default function App() {
     const nextCard: FlowerCard = {
       id: existingIndex >= 0 ? archive[existingIndex].id : crypto.randomUUID(),
       image: savedImage,
-      name: flowerData.name,
-      language: flowerData.language,
+      name: displayName ?? flowerData.name,
+      language: displayLanguage ?? flowerData.language,
       nameEn: flowerData.nameEn,
       languageEn: flowerData.languageEn,
       story:
@@ -416,11 +418,11 @@ export default function App() {
     flowerLevelInfo.nextTarget === null
       ? 100
       : Math.min(
-          100,
-          ((archive.length - previousTarget) /
-            (flowerLevelInfo.nextTarget - previousTarget)) *
-            100,
-        );
+        100,
+        ((archive.length - previousTarget) /
+          (flowerLevelInfo.nextTarget - previousTarget)) *
+        100,
+      );
 
   const handleOpenArchive = () => {
     archiveSectionRef.current?.scrollIntoView({

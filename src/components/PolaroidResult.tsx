@@ -27,6 +27,8 @@ interface Props {
     savedImage: string,
     memo?: string,
     story?: FlowerStory,
+    displayName?: string,
+    displayLanguage?: string,
   ) => Promise<void>;
 }
 
@@ -239,7 +241,13 @@ export default function PolaroidResult({
     try {
       const finalImageBase64 = await generatePolaroidBase64();
 
-      await onSaveToArchive(finalImageBase64, memo, story ?? undefined);
+      await onSaveToArchive(
+        finalImageBase64,
+        memo,
+        story ?? undefined,
+        displayFlowerName,
+        displayFlowerLanguage,
+      );
 
       showToast("꽃 카드가 나만의 꽃 도감에 저장되었어요.");
 
@@ -274,7 +282,7 @@ export default function PolaroidResult({
 
       await navigator.share({
         files: [file],
-        title: "엄마는꽃",
+        title: lang === "en" ? "Mom is Flower" : "엄마는꽃",
         text:
           lang === "en"
             ? `A flower card made with Mom is Flower 🌸
