@@ -3,7 +3,14 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/analyze-flower.ts": { "maxDuration": 30 },
-    "api/flower-story.ts": { "maxDuration": 30 }
+    "api/analyze-flower.ts": {
+      "maxDuration": 60
+    },
+    "api/flower-story.ts": {
+      "maxDuration": 30
+    },
+    "api/wallet.ts": {
+      "maxDuration": 30
+    }
   }
 }

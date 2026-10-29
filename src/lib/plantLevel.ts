@@ -1,9 +1,9 @@
 export const plantLevels = [
-  { level: 1, minimum: 0, title: '새싹 관찰자', description: '길가의 작은 초록부터 만나 보세요.' },
-  { level: 2, minimum: 10, title: '산책길 탐험가', description: '이름을 아는 식물이 하나둘 늘고 있어요.' },
-  { level: 3, minimum: 30, title: '식물 수집가', description: '산책길이 당신만의 식물도감이 되고 있어요.' },
-  { level: 4, minimum: 60, title: '초록빛 정원사', description: '꽃과 나무를 알아보는 눈이 자랐어요.' },
-  { level: 5, minimum: 100, title: '식물도감 전문가', description: '100종의 식물을 만났어요. 새로운 발견을 계속해 보세요.' },
+  { level: 1, minimum: 0, title: '들꽃 관심가', description: '길가의 작은 초록부터 만나 보세요.' },
+  { level: 2, minimum: 10, title: '꽃길 산책가', description: '이름을 아는 식물이 하나둘 늘고 있어요.' },
+  { level: 3, minimum: 30, title: '들꽃 탐험가', description: '산책길이 당신만의 식물도감이 되고 있어요.' },
+  { level: 4, minimum: 60, title: '꽃도감 수집가', description: '꽃과 나무를 알아보는 눈이 자랐어요.' },
+  { level: 5, minimum: 100, title: '들꽃 전문가', description: '100종의 식물을 만났어요. 새로운 발견을 계속해 보세요.' },
 ] as const;
 
 export function normalizePlantName(name: string): string {

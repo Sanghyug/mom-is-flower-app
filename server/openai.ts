@@ -1,11 +1,11 @@
 import type { FlowerStory } from '../src/types.ts';
-export type Request = { method?: string; body?: Record<string, unknown> };
+export type Request = { method?: string; body?: Record<string, unknown>; headers?: Record<string, string | string[] | undefined> };
 export type Response = { setHeader: (name: string, value: string) => void; status: (code: number) => Response; json: (value: unknown) => unknown; end: () => unknown };
 export const storyKeys: (keyof FlowerStory)[] = ['summary', 'habitat', 'origin', 'season', 'features', 'meaningOrigin', 'legend', 'art'];
 export function prepare(req: Request, res: Response): boolean {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') { res.status(204).end(); return false; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return false; }

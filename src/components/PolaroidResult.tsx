@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Check, Download, Heart, LoaderCircle, Share2, Volume2, VolumeX } from 'lucide-react';
 import Dialog from './Dialog';
-import { parseStory, postApi, storyFields } from '../lib/api';
+import { storyFields } from '../lib/api';
 import { makeCard } from '../lib/card';
 import { downloadCard, shareCard } from '../lib/photos';
 import type { FlowerCard, FlowerResult, FlowerStory } from '../types';
-import { track } from '../lib/analytics';
+import { creditPolicy } from '../lib/creditPolicy';
 
 export default function FlowerResultView({ photo, result, saved, onClose, onSave, notify }: {
   photo: string; result: FlowerResult; saved?: FlowerCard; onClose: () => void;
   onSave: (card: FlowerCard) => Promise<void>; notify: (message: string) => void;
 }) {
   const [memo, setMemo] = useState(saved?.memo || '');
-  const [story, setStory] = useState<FlowerStory | null>(saved?.story || null);
+  const story: FlowerStory | null = saved?.story || null;
   const [storyOpen, setStoryOpen] = useState(false);
-  const [storyLoading, setStoryLoading] = useState(false);
+  const storyLoading = false;
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -27,14 +27,9 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
   async function loadStory() {
     setStoryOpen(true);
     if (story) { storyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-    setStoryLoading(true); setError('');
-    const controller = new AbortController(); request.current = controller;
-    try {
-      const data = parseStory(await postApi('flower-story', { name: result.name, lang: 'ko' }, controller.signal));
-      if (!controller.signal.aborted) { setStory(data); setStored(false); track('flower_story_opened'); }
-    } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : '식물 이야기를 불러오지 못했어요.'); }
-    finally { if (!controller.signal.aborted) setStoryLoading(false); }
+    if (creditPolicy.storyCost === null) { setError('새 식물 이야기는 이용 기준을 준비하고 있어요. 이름과 꽃말로 메모 카드를 만들 수 있어요.'); return; }
   }
+
   async function cardImage() { return saved ? saved.image : makeCard(photo, result.name, result.language, memo.trim()); }
   async function save() {
     if (working) return;
@@ -62,12 +57,13 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
   return <Dialog title={saved ? '나의 식물 기록' : '오늘 만난 식물'} onClose={onClose} wide>
     <div className="result-layout"><div className="result-card"><img className={saved ? 'saved-card-image' : 'result-photo'} src={photo} alt={`${result.name} 사진`} /><div className="result-heading"><span className="eyebrow">A LITTLE GREEN IN YOUR DAY</span><h2>{result.name}</h2>{result.scientificName && <p className="scientific-name">{result.scientificName}</p>}<p className="flower-meaning"><Heart size={18} />상징·꽃말 · {result.language}</p></div></div>
       <div className="result-content">
-        {!saved && <p className="identification-note">{result.confidence === 'low' ? '사진만으로 구별하기 어려운 꽃이에요. 다른 각도에서도 확인해 보세요.' : 'AI가 사진으로 추정한 이름이에요. 비슷한 식물과 다를 수 있어요.'}</p>}
-        <button className="button button-story" onClick={() => void loadStory()} disabled={storyLoading}><BookOpen size={22} />{storyLoading ? '식물 이야기를 불러오고 있어요' : '이 식물의 이야기 읽기'}{storyLoading && <LoaderCircle size={20} className="spin" />}</button>
+        {!saved && <p className="identification-note">{result.confidence === 'low' ? '사진만으로 구별하기 어려운 식물이에요. 다른 각도에서도 확인해 보세요.' : 'AI가 사진으로 추정한 이름이에요. 비슷한 식물과 다를 수 있어요.'}</p>}
+        <button className="button button-story" onClick={() => void loadStory()} disabled={!story}><BookOpen size={22} />{story ? '저장된 식물 이야기 읽기' : '꽃말의 유래·설화 · 준비 중'}{storyLoading && <LoaderCircle size={20} className="spin" />}</button>
+        {!story && <p className="story-price-pending">기본 찾기는 이름과 꽃말·상징까지예요. 꽃말의 유래·설화는 돋보기 사용 기준을 준비하고 있어요.</p>}
         {!saved && <div className="memo-field"><label htmlFor="flower-memo">이 순간에 한마디 <span>선택</span></label><textarea id="flower-memo" value={memo} onChange={event => { setMemo(event.target.value); setStored(false); }} maxLength={40} placeholder="예: 엄마와 함께 걷던 산책길" rows={2} /><span className="character-count">{memo.length}/40</span></div>}
         {saved?.memo && <p className="saved-memo">“{saved.memo}”</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <button className="button button-primary" disabled={working || stored} onClick={() => void save()}>{stored ? <Check size={22} /> : <BookOpen size={22} />}{stored ? '식물도감에 담았어요' : working ? '잠시만 기다려 주세요' : saved ? '식물 이야기도 함께 저장' : '나의 식물도감에 담기'}</button>
+        <button className="button button-primary" disabled={working || stored} onClick={() => void save()}>{stored ? <Check size={22} /> : <BookOpen size={22} />}{stored ? '식물도감에 담았어요' : working ? '잠시만 기다려 주세요' : saved ? '식물카드 기록 저장' : '나의 식물도감에 담기'}</button>
         <div className="button-pair"><button className="button button-secondary" disabled={working} onClick={() => void exportCard(false)}><Download size={20} />파일 저장</button><button className="button button-secondary" disabled={working} onClick={() => void exportCard(true)}><Share2 size={20} />공유하기</button></div>
         <p className="storage-note">식물도감은 이 기기에 저장돼요. 소중한 식물카드는 파일로도 보관해 주세요.</p>
       </div></div>
