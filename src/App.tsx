@@ -1,3 +1,4 @@
+import { getAppShareLink } from './lib/appLink';
 import { revokeCardLinkIfPresent } from './lib/cardLinks';
 import BannerAd from './components/BannerAd';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
@@ -105,9 +106,10 @@ export default function App() {
   }
   async function shareApp() {
     try {
-      const text = '산책길에 만난 꽃, 이름이 궁금하다면? 엄마는꽃에서 식물 이름과 이야기를 만나 보세요.\nhttps://mom-is-flower.vercel.app';
+      const appUrl = await getAppShareLink();
+      const text = `산책길에 만난 꽃, 이름이 궁금하다면? 토스 엄마는꽃에서 식물 이름과 이야기를 만나 보세요.\n${appUrl}`;
       if (isToss) { const { share } = await import('@apps-in-toss/web-framework'); await share({ message: text }); }
-      else if (navigator.share) await navigator.share({ title: '엄마는꽃', text, url: 'https://mom-is-flower.vercel.app' });
+      else if (navigator.share) await navigator.share({ title: '엄마는꽃', text, url: appUrl });
       else { await navigator.clipboard.writeText(text); notify('앱 주소를 복사했어요. 친구에게 붙여 넣어 주세요.'); }
     } catch (e) { if (!(e instanceof DOMException && e.name === 'AbortError')) notify('공유하지 못했어요. 잠시 후 다시 시도해 주세요.'); }
   }

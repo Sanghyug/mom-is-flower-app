@@ -1,13 +1,15 @@
+import QRCode from 'qrcode';
+import { appEntryUrl } from './appLink';
 export async function makeCard(photo: string, name: string, meaning: string, memo: string, createdAt: string): Promise<string> {
   await document.fonts.ready;
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('식물카드를 만들지 못했어요. 다시 시도해 주세요.')); img.src = photo;
   });
-  const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 990;
+  const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 1150;
   const context = canvas.getContext('2d');
   if (!context) throw new Error('식물카드를 만들지 못했어요.');
   const ctx: CanvasRenderingContext2D = context;
-  ctx.fillStyle = '#fcfaf4'; ctx.fillRect(0, 0, 720, 990);
+  ctx.fillStyle = '#fcfaf4'; ctx.fillRect(0, 0, 720, 1150);
   const side = Math.min(image.width, image.height);
   ctx.drawImage(image, (image.width - side) / 2, (image.height - side) / 2, side, side, 36, 36, 648, 648);
   ctx.fillStyle = '#264d3e'; ctx.font = 'bold 40px sans-serif';
@@ -28,5 +30,12 @@ export async function makeCard(photo: string, name: string, meaning: string, mem
   ctx.strokeStyle = '#d6ddcf'; ctx.beginPath(); ctx.moveTo(42, 927); ctx.lineTo(678, 927); ctx.stroke();
   ctx.fillStyle = '#637661'; ctx.font = '20px sans-serif'; ctx.fillText('엄마는꽃', 42, 960);
   ctx.textAlign = 'right'; ctx.fillText(new Date(createdAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }), 678, 960);
+  const qr = document.createElement('canvas');
+  await QRCode.toCanvas(qr, appEntryUrl, { width: 144, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#264d3e', light: '#fcfaf4' } });
+  ctx.drawImage(qr, 544, 988, 144, 144);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#315c46'; ctx.font = 'bold 25px sans-serif';
+  ctx.fillText('토스에서 엄마는꽃', 42, 1029);
+  ctx.font = '20px sans-serif'; ctx.fillText('나도 나만의 식물도감 만들기', 42, 1063);
+  ctx.font = '17px sans-serif'; ctx.fillText('mom-is-flower.vercel.app/toss', 42, 1096);
   return canvas.toDataURL('image/jpeg', 0.85);
 }

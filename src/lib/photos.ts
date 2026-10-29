@@ -1,3 +1,4 @@
+import { appEntryUrl } from './appLink';
 export const isToss = import.meta.env.MODE === 'toss';
 
 export function resizePhoto(source: string): Promise<string> {
@@ -52,7 +53,7 @@ export async function shareCard(dataUrl: string, name: string, meaning: string) 
   const file = new File([blob], `mom-is-flower.${blob.type === 'image/png' ? 'png' : 'jpg'}`, { type: blob.type || 'image/jpeg' });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\nhttps://mom-is-flower.vercel.app`, files: [file] });
+      await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\n${appEntryUrl}`, files: [file] });
       return '식물카드 공유 창을 열었어요.';
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error;

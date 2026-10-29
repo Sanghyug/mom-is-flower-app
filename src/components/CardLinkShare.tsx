@@ -1,3 +1,4 @@
+import { getAppShareLink } from '../lib/appLink';
 import { useState } from 'react';
 import { creditRequest, demoCredits } from '../lib/creditClient';
 import { isToss } from '../lib/photos';
@@ -20,10 +21,12 @@ export default function CardLinkShare({cardId,name,meaning,memo,createdAt,getIma
   async function send(copy=false) {
     if(!link)return;
     try {
-      if(copy){await navigator.clipboard.writeText(link.url);notify('식물카드 링크를 복사했어요.');}
-      else if(isToss){const {share}=await import('@apps-in-toss/web-framework');await share({message:`${name} · 나의 식물카드를 함께 보세요.\n${link.url}`});}
-      else if(navigator.share)await navigator.share({title:`${name} · 엄마는꽃`,url:link.url});
-      else{await navigator.clipboard.writeText(link.url);notify('식물카드 링크를 복사했어요.');}
+      const appUrl = await getAppShareLink();
+      const message = `${name} · 나의 식물카드를 함께 보세요.\n${link.url}\n\n토스에서 엄마는꽃 만나기\n${appUrl}`;
+      if(copy){await navigator.clipboard.writeText(message);notify('식물카드 링크를 복사했어요.');}
+      else if(isToss){const {share}=await import('@apps-in-toss/web-framework');await share({message});}
+      else if(navigator.share)await navigator.share({title:`${name} · 엄마는꽃`,text:message});
+      else{await navigator.clipboard.writeText(message);notify('식물카드 링크를 복사했어요.');}
     }catch(e){if(!(e instanceof DOMException&&e.name==='AbortError'))setError('공유 창을 열지 못했어요. 링크 복사를 이용해 주세요.');}
   }
   async function revoke() {

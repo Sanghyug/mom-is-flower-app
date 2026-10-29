@@ -23,6 +23,10 @@
     {
       "source": "/s/:token",
       "destination": "/api/shared-card?token=:token"
+    },
+    {
+      "source": "/toss",
+      "destination": "/api/open-toss"
     }
   ]
 }
