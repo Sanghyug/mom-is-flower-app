@@ -1,3 +1,4 @@
+import { adGroups } from '../src/lib/adGroups.ts';
 import { createHash } from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -38,7 +39,7 @@ async function ensureWallet(uid: string, req: Request): Promise<Wallet> {
   });
 }
 export function rewardAvailability() {
-  return { ad: Boolean(process.env.TOSS_REWARDED_AD_GROUP_ID), share: Boolean(process.env.TOSS_SHARE_MODULE_ID) };
+  return { ad: Boolean(process.env.TOSS_REWARDED_AD_GROUP_ID || adGroups.rewarded), share: Boolean(process.env.TOSS_SHARE_MODULE_ID) };
 }
 export async function walletState(uid: string, req: Request) {
   let wallet = await ensureWallet(uid, req);
@@ -55,7 +56,7 @@ export async function walletState(uid: string, req: Request) {
     });
   }
   if (!pending.empty) wallet = currentWallet((await ref.get()).data() as Wallet);
-  return { ...wallet, rewards: rewardAvailability(), adGroupId: process.env.TOSS_REWARDED_AD_GROUP_ID || '', shareModuleId: process.env.TOSS_SHARE_MODULE_ID || '' };
+  return { ...wallet, rewards: rewardAvailability(), adGroupId: process.env.TOSS_REWARDED_AD_GROUP_ID || adGroups.rewarded, shareModuleId: process.env.TOSS_SHARE_MODULE_ID || '' };
 }
 function validId(value: unknown): value is string { return typeof value === 'string' && /^[a-zA-Z0-9-]{24,80}$/.test(value); }
 export async function paidRecognition(uid: string, req: Request, image: string, perform: () => Promise<Record<string, unknown>>) {

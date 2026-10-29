@@ -1,3 +1,4 @@
+import { adGroups } from '../lib/adGroups';
 import { useEffect, useRef, useState } from 'react';
 import { isToss } from '../lib/photos';
 let ready: Promise<void> | undefined;
@@ -5,7 +6,7 @@ export default function BannerAd() {
   const target = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const id = import.meta.env.VITE_TOSS_BANNER_AD_GROUP_ID;
+    const id = import.meta.env.VITE_TOSS_BANNER_AD_GROUP_ID || adGroups.banner;
     if (!isToss || !id) return;
     let active = true;
     let slot: { destroy: () => void } | undefined;

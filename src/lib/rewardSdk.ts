@@ -1,3 +1,4 @@
+import { adGroups } from './adGroups';
 import type { RewardKind } from './creditPolicy';
 import type { WalletState } from './creditClient';
 
@@ -26,10 +27,10 @@ export async function runReward(kind: RewardKind, wallet: WalletState, signal: A
       return;
     }
     let showing = false;
-    register(sdk.loadFullScreenAd({ options: { adGroupId: wallet.adGroupId }, onEvent: event => {
+    register(sdk.loadFullScreenAd({ options: { adGroupId: wallet.adGroupId || adGroups.rewarded }, onEvent: event => {
       if (event.type !== 'loaded' || showing || settled) return;
       showing = true;
-      register(sdk.showFullScreenAd({ options: { adGroupId: wallet.adGroupId }, onEvent: shown => {
+      register(sdk.showFullScreenAd({ options: { adGroupId: wallet.adGroupId || adGroups.rewarded }, onEvent: shown => {
         if (shown.type === 'userEarnedReward') finish('userEarnedReward');
         else if (shown.type === 'dismissed') finish(undefined, new DOMException('Cancelled', 'AbortError'));
         else if (shown.type === 'failedToShow') finish(undefined, new Error('광고를 표시하지 못했어요. 잠시 후 다시 시도해 주세요.'));

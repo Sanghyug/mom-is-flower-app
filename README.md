@@ -112,3 +112,6 @@ OpenAI 이미지 입력 참고: https://developers.openai.com/api/docs/guides/im
 
 ## 2026-10-30 선택 카드 링크 공유
 선택한 카드만 별도 스냅샷으로 공유하는 인증된 생성·해제 API, 30일 만료 수신 페이지, OG 이미지 및 이미지 저장을 구현했습니다. 전체 도감이나 UID는 공개하지 않습니다. 운영 규칙 검토 및 서버 자격 증명 설정 후 CARD_SHARING_ENABLED=true로 활성화해야 합니다. 상세 내용은 docs/card-link-sharing.md를 참고하세요.
+
+## 2026-10-30 광고 ID 확정
+운영자가 확인한 배너 ait.v2.live.4842d04796c1454c / 리워드 ait.v2.live.4e2187a486de473b를 반영했습니다. 공개 ID를 공통 설정으로 관리하며 리워드는 서버 지갑 인증 및 보상 완료 이벤트 확인을 그대로 유지합니다. 서버 API 변경은 Vercel 배포에 별도로 반영해야 합니다. 작업 경로는 C:\Users\parki\mom-is-flower-app입니다.
