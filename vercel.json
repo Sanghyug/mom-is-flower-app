@@ -11,6 +11,18 @@
     },
     "api/wallet.ts": {
       "maxDuration": 30
+    },
+    "api/share-card.ts": {
+      "maxDuration": 30
+    },
+    "api/shared-card.ts": {
+      "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/s/:token",
+      "destination": "/api/shared-card?token=:token"
+    }
+  ]
 }

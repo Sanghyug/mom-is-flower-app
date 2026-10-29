@@ -5,7 +5,7 @@ import { getFirestore, type Transaction } from 'firebase-admin/firestore';
 import { CreditError, creditDay, currentWallet, grantCredit, initialWallet, reserveCredit, settleCredit, type Operation, type RewardKind, type Wallet } from '../src/lib/creditPolicy.ts';
 import type { Request, Response } from './openai.ts';
 
-function services() {
+export function services() {
   const secret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!secret) throw new CreditError('CREDITS_NOT_CONFIGURED', 503);
   const app = getApps().find(item => item.name === 'flower-credits') || initializeApp({ credential: cert(JSON.parse(secret)) }, 'flower-credits');

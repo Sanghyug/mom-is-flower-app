@@ -109,3 +109,6 @@ OpenAI 이미지 입력 참고: https://developers.openai.com/api/docs/guides/im
 - 공식 근거: https://developers-apps-in-toss.toss.im/documentation/common/growth/share/share-message , https://developers-apps-in-toss.toss.im/documentation/common/monetization/iaa/web-banner
 
 배너 그룹 등록 완료: 엄마는꽃 식물도감 배너 / 문구 강조 / 2026-10-30. 콘솔 상태는 구글 반영 중이며 SDK용 광고 ID는 아직 표시되지 않습니다. 콘솔 URL의 groupId를 발급된 SDK ID로 간주하지 않습니다.
+
+## 2026-10-30 선택 카드 링크 공유
+선택한 카드만 별도 스냅샷으로 공유하는 인증된 생성·해제 API, 30일 만료 수신 페이지, OG 이미지 및 이미지 저장을 구현했습니다. 전체 도감이나 UID는 공개하지 않습니다. 운영 규칙 검토 및 서버 자격 증명 설정 후 CARD_SHARING_ENABLED=true로 활성화해야 합니다. 상세 내용은 docs/card-link-sharing.md를 참고하세요.

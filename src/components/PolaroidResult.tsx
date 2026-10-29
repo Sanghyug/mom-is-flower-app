@@ -1,3 +1,4 @@
+import CardLinkShare from './CardLinkShare';
 import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Check, Download, Heart, LoaderCircle, Share2, Volume2, VolumeX } from 'lucide-react';
 import Dialog from './Dialog';
@@ -39,6 +40,10 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
     return () => { active = false; };
   }, [photo, result.name, result.language, memo, saved]);
   async function cardImage() { return exportImage || makeCard(photo, result.name, result.language, memo.trim(), createdAt.current); }
+  async function persistForSharing() {
+    const card: FlowerCard = { ...result, ...saved, id: sessionId.current, image: await cardImage(), memo: memo.trim(), createdAt: createdAt.current, ...(story ? { story } : {}) };
+    await onSave(card); setStored(true);
+  }
   async function save() {
     if (working) return;
     setWorking(true); setError('');
@@ -73,6 +78,7 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
         {error && <p className="inline-error" role="alert">{error}</p>}
         <button className="button button-primary" disabled={working || stored} onClick={() => void save()}>{stored ? <Check size={22} /> : <BookOpen size={22} />}{stored ? '식물도감에 담았어요' : working ? '잠시만 기다려 주세요' : saved ? '식물카드 기록 저장' : '나의 식물도감에 담기'}</button>
         <div className="button-pair"><button className="button button-secondary" disabled={working || !exportImage} onClick={() => void exportCard(false)}><Download size={20} />파일 저장</button><button className="button button-secondary" disabled={working || !exportImage} onClick={() => void exportCard(true)}><Share2 size={20} />공유하기</button></div>
+        <CardLinkShare cardId={sessionId.current} name={result.name} meaning={result.language} memo={memo.trim()} createdAt={createdAt.current} getImage={cardImage} beforeCreate={persistForSharing} notify={notify} />
         <p className="storage-note">이미지 공유를 지원하지 않는 기기에서는 파일로 저장해요. 카카오톡에서 저장한 사진을 선택해 보내 주세요.</p><p className="storage-note">식물도감은 이 기기에 저장돼요. 소중한 식물카드는 파일로도 보관해 주세요.</p>
       </div></div>
     {storyOpen && <section className="flower-story" ref={storyRef} aria-label="식물 이야기"><div className="section-title"><h3>{result.name}의 이야기</h3>{'speechSynthesis' in window && <button className="subtle-link" onClick={readAloud}>{speaking ? <VolumeX size={21} /> : <Volume2 size={21} />}{speaking ? '읽기 멈추기' : '소리로 듣기'}</button>}</div>

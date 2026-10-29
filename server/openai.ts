@@ -1,6 +1,6 @@
 import type { FlowerStory } from '../src/types.ts';
-export type Request = { method?: string; body?: Record<string, unknown>; headers?: Record<string, string | string[] | undefined> };
-export type Response = { setHeader: (name: string, value: string) => void; status: (code: number) => Response; json: (value: unknown) => unknown; end: () => unknown };
+export type Request = { method?: string; query?: Record<string, string | string[] | undefined>; body?: Record<string, unknown>; headers?: Record<string, string | string[] | undefined> };
+export type Response = { setHeader: (name: string, value: string) => void; status: (code: number) => Response; json: (value: unknown) => unknown; end: (body?: string | Uint8Array) => unknown };
 export const storyKeys: (keyof FlowerStory)[] = ['summary', 'habitat', 'origin', 'season', 'features', 'meaningOrigin', 'legend', 'art'];
 export function prepare(req: Request, res: Response): boolean {
   res.setHeader('Access-Control-Allow-Origin', '*');

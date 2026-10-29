@@ -1,3 +1,4 @@
+import { revokeCardLinkIfPresent } from './lib/cardLinks';
 import BannerAd from './components/BannerAd';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { ArrowRight, BookOpen, Camera, Check, ChevronRight, Flower2, Heart, Image as ImageIcon, Leaf, LoaderCircle, Search, Share2, Type } from 'lucide-react';
@@ -93,6 +94,7 @@ export default function App() {
     notify('나의 식물도감에 소중히 담았어요.');
   }
   async function remove(card: FlowerCard) {
+    await revokeCardLinkIfPresent(card.id);
     await changeCard(card.id);
     setArchive(previous => previous.filter(item => item.id !== card.id));
     setUndo(card); notify('식물 기록을 지웠어요.');
