@@ -1,73 +1,82 @@
-# React + TypeScript + Vite
+# 엄마는꽃
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+산책길에 만난 꽃의 이름과 꽃말을 알아보고, 이야기를 읽고, 사진과 마음을 꽃카드로 간직하는 앱입니다.
+Flutter에서 시작해 웹·앱인토스로 옮긴 프로젝트의 2026-10-29 리뉴얼입니다.
 
-Currently, two official plugins are available:
+## 유일한 작업 폴더
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`C:\Users\parki\mom-is-flower-app`
 
-## React Compiler
+- 저장소: https://github.com/Sanghyug/mom-is-flower-app
+- 기준 커밋: `3f35d42d2164865ac1ed3796749e4c6c6be5dcef`
+- 토스: https://apps-in-toss.toss.im/workspace/44649/mini-app/mom-is-flower/app-build
+- 기존 토스 출시본: `20260524-10`, SDK 2.6.0 (콘솔에서 확인)
+- 기존 API: https://mom-is-flower.vercel.app
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 실행
 
-## Expanding the ESLint configuration
+Node 24 환경에서 검증했습니다.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+npm ci
+npm run dev
+npm run build
+npm test
+npm run toss:build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+일반 Vite 개발 서버는 `api/` 서버 함수를 실행하지 않습니다.
+AI를 함께 개발하려면 Vercel 개발 환경을 쓰거나 `VITE_API_BASE_URL`을 기존 API 서버로 설정하세요.
+웹 배포는 같은 출처의 `/api/`를 사용하고, 토스 패키지는 `.env.toss`의 절대 서버 주소를 사용합니다.
+토스 패키지 생성은 Vercel API 배포를 대신하지 않습니다.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+서버 환경변수는 **`OPENAI_API_KEY`**입니다. `VITE_`로 시작하는 이름에 비밀키를 넣지 마세요.
+기존 서버가 `VITE_OPENAI_API_KEY`만 썼다면 신규 API 배포 전에 서버 변수명을 변경해야 합니다.
+`OPENAI_MODEL`은 선택 사항이며, 지정하지 않으면 기존 모델 `gpt-4o`를 사용합니다.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 변경한 경험
+
+- 크림·초록의 꽃 산책 디자인, 큰 버튼과 큰 글씨 전환
+- 사진 선택 후 전송 안내·확인, 분석 취소·시간 제한·재시도
+- 한국어 중심의 꽃 이름과 꽃말, 공유 조건 없이 여는 꽃 이야기
+- 기기가 지원하면 꽃 이야기를 소리로 읽기
+- 사진별 추억과 메모, 도감 검색, 삭제 전 확인 및 7초간 되돌리기
+- JPEG 꽃카드 생성, 파일 저장 및 가능한 환경에서 이미지 공유
+- 토스에서 카메라·앨범·저장·공유 SDK 사용, 웹에서는 브라우저 기능 사용
+
+## 기존 기록과 저장 방식
+
+기존 `mom-is-flower-archive`의 로컬 기록을 IndexedDB로 한 번 옮깁니다.
+원본 localStorage는 보존하고, 이전이 완료된 뒤에는 삭제한 카드가 다시 나타나지 않도록 이전 완료 표시를 남깁니다.
+저장 성공은 DB 트랜잭션 완료 후에만 표시합니다. 손상된 기록은 지우지 않고 오류를 안내합니다.
+새 기록은 같은 꽃이라도 각각 저장하여 기존 사진을 덮어쓰지 않습니다.
+
+이번 버전은 기기 내 저장을 기본으로 사용하며 Firebase 익명 로그인·자동 사진 업로드를 실행하지 않습니다.
+기존 Firebase 서버 데이터는 삭제하지 않았습니다. 이전 앱도 서버 기록을 내려받는 기능은 없었으므로 서버 전용 기록의 복원 기능은 이번 범위에 포함하지 않았습니다.
+기기·브라우저 또는 출처가 바뀌면 도감이 자동으로 동기화되지는 않습니다.
+
+## 검증 결과와 남은 출시 확인
+
+- TypeScript·웹 빌드 및 API 테스트 4개 통과
+- 앱인토스 `.ait` 생성 통과 (RN 0.84.0 / 0.72.6)
+- 모바일 390px 및 큰 글씨 화면 확인
+- 테스트 서버로 사진 선택 → 결과 → 이야기 → 메모 → 도감 저장 → 새로 열기 후 유지 → 검색·삭제 확인
+- 직접 생성한 꽃 사진을 기존 실제 API에 전송: `코스모스 / 소녀의 순정` 응답 확인
+- 브라우저 다운로드 자동 검증은 도구가 응답하지 않아 완료하지 못함
+- 실제 토스 기기의 카메라·권한·파일 저장·공유 및 음성 재생은 기기 테스트 필요
+- 새 API 구현은 모의 응답 테스트 완료, 실제 AI 호출은 기존 운영 서버에서 검증
+- GitHub 푸시·Vercel 배포·토스 버전 등록·출시는 수행하지 않음
+
+`tests/mock-api.mjs`는 로컬 UI 검증용입니다. 테스트 데이터에는 명시적으로 '테스트'를 표시하며 배포 API에 포함되지 않습니다.
+
+## 복구
+
+구버전과 중첩 복사본·환경설정·Git 이력을 623개 파일의 ZIP으로 보존하고 각 파일 SHA-256을 확인했습니다.
+`node_modules`와 `dist`는 재생성 가능한 파일이라 제외했습니다.
+
+- `C:\Users\parki\Documents\ChatGPT\naezzal4zzal 2\mom-recovery-before-renewal-20261029.zip`
+- `C:\Users\parki\Documents\ChatGPT\naezzal4zzal 2\mom-recovery-manifest.json`
+
+백업에 로컬 설정이 있으므로 공개 저장소에 올리지 마세요. 과거 GitHub 저장소 `Sanghyug/mom-is-flower`는 삭제하지 않았습니다.
+
+OpenAI 이미지 입력 참고: https://developers.openai.com/api/docs/guides/images-vision

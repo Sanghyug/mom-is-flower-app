@@ -25,3 +25,9 @@ dist-ssr
 .vercel
 .env*.local
 .env*
+
+# Renewal artifacts
+!.env.example
+!.env.toss
+*.ait
+.granite/

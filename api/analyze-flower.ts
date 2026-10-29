@@ -1,86 +1,16 @@
-export default async function handler(req: any, res: any) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+import { askOpenAI, fail, prepare, type Request, type Response } from '../server/openai.ts';
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
+export default async function handler(req: Request, res: Response) {
+  if (!prepare(req, res)) return;
+  const image = req.body?.image;
+  if (typeof image !== 'string' || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image) || image.length > 4_000_000) return res.status(400).json({ error: '올바른 꽃 사진이 필요해요.' });
   try {
-    const { image } = req.body;
-
-    if (!image) {
-      return res.status(400).json({ error: "Image is required" });
-    }
-
-    const apiKey =
-      process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(500).json({
-        error: "OpenAI API Key가 Vercel Production 환경변수에 없습니다.",
-      });
-    }
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: '사진 속 식물이나 꽃의 이름을 정확히 찾고, 해당 꽃의 일반적으로 알려진 대표 꽃말을 짧게 알려줘. 창작 위로문장은 만들지 마. 한국어 이름과 한국어 꽃말, 영어 이름과 영어 꽃말을 모두 제공해줘. 꽃말을 모르면 한국어는 "꽃말 정보 없음", 영어는 "No flower meaning found"라고 답해줘. 반드시 다음 JSON 포맷으로만 응답해줘: {"name": "한국어 꽃이름", "language": "한국어 대표 꽃말", "nameEn": "English flower name", "languageEn": "Representative flower meaning in English"}',
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: image,
-                },
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const result: any = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: result.error?.message || "OpenAI API 호출 실패",
-      });
-    }
-
-    const choiceMessage = result.choices?.[0]?.message?.content;
-
-    if (!choiceMessage) {
-      return res.status(500).json({
-        error: "OpenAI 응답에 분석 결과가 없습니다.",
-      });
-    }
-
-    const parsedData = JSON.parse(choiceMessage);
-
-    return res.status(200).json(parsedData);
-  } catch (error) {
-    console.error("analyze-flower error:", error);
-    return res.status(500).json({
-      error:
-        error instanceof Error ? error.message : "Failed to analyze flower",
-    });
-  }
+    const result = await askOpenAI([
+      { type: 'text', text: '사진 속 꽃이나 식물을 식별해 주세요. 꽃이 보이지 않거나 식별할 수 없으면 {"found":false}를 반환하세요. 식별할 수 있으면 일반적인 한국어 이름과 알려진 대표 꽃말을 간결하게 답하세요. 꽃말을 모르면 "알려진 꽃말이 없어요"라고 쓰세요. 확신이 낮으면 confidence를 low로 표시하고 한국어 이름 앞에 "추정: "를 붙이세요. 확신을 과장하지 마세요. 반드시 {"found":true,"name":"한국어 이름","language":"한국어 꽃말","nameEn":"영어 이름","languageEn":"영어 꽃말","scientificName":"알 수 있으면 학명, 모르면 빈 문자열","confidence":"high 또는 medium 또는 low"} JSON 형식으로만 답하세요.' },
+      { type: 'image_url', image_url: { url: image, detail: 'auto' } },
+    ]);
+    if (result.found === false) return res.status(200).json({ found: false });
+    if (typeof result.name !== 'string' || !result.name.trim() || typeof result.language !== 'string') throw new Error('AI_INVALID_RESPONSE');
+    return res.status(200).json({ found: true, name: result.name.slice(0, 100), language: result.language.slice(0, 300), nameEn: typeof result.nameEn === 'string' ? result.nameEn.slice(0, 100) : '', languageEn: typeof result.languageEn === 'string' ? result.languageEn.slice(0, 300) : '', scientificName: typeof result.scientificName === 'string' ? result.scientificName.slice(0, 150) : '', confidence: ['high', 'medium', 'low'].includes(String(result.confidence)) ? result.confidence : 'medium' });
+  } catch (error) { return fail(res, error); }
 }

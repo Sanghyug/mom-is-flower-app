@@ -4,7 +4,7 @@ export default defineConfig({
   appName: "mom-is-flower",
   brand: {
     displayName: "엄마는꽃",
-    primaryColor: "#f6a6b2",
+    primaryColor: "#315c46",
     icon: "https://static.toss.im/appsintoss/44649/ce049019-148f-4a94-ae91-e03689863323.png",
   },
   web: {
@@ -12,7 +12,7 @@ export default defineConfig({
     port: 5173,
     commands: {
       dev: "vite --host 0.0.0.0",
-      build: "tsc -b && vite build",
+      build: "tsc -b && vite build --mode toss",
     },
   },
   permissions: [

@@ -1,656 +1,134 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, Image as ImageIcon, BookOpen } from "lucide-react";
-import PolaroidResult from "./components/PolaroidResult";
-import FlowerArchiver from "./components/FlowerArchiver";
-import SplashScreen from "./components/SplashScreen";
-import { collection, doc, setDoc } from "firebase/firestore";
-import { db, ensureAnonymousLogin } from "./firebase";
-
-export type FlowerStory = {
-  summary: string;
-  habitat: string;
-  origin: string;
-  season: string;
-  features: string;
-  meaningOrigin: string;
-  legend: string;
-  art: string;
-};
-
-export type FlowerCard = {
-  id: string;
-  image: string;
-  name: string;
-  language: string;
-  nameEn?: string;
-  languageEn?: string;
-  story?: FlowerStory;
-  memo?: string;
-  createdAt: string;
-};
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { ArrowRight, BookOpen, Camera, Check, ChevronRight, Flower2, Heart, Image as ImageIcon, Leaf, LoaderCircle, Search, Share2, Type } from 'lucide-react';
+import FlowerArchiver from './components/FlowerArchiver';
+import PolaroidResult from './components/PolaroidResult';
+import Dialog from './components/Dialog';
+import { changeCard, loadArchive } from './lib/archive';
+import { parseFlower, postApi } from './lib/api';
+import { isToss, pickTossPhoto, readPhoto } from './lib/photos';
+import type { FlowerCard, FlowerResult } from './types';
+import { track } from './lib/analytics';
+export type { FlowerCard, FlowerStory } from './types';
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
-
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [flowerData, setFlowerData] = useState<{
-    name: string;
-    language: string;
-    nameEn?: string;
-    languageEn?: string;
-    story?: FlowerStory;
-  } | null>(null);
+  const [page, setPage] = useState<'home' | 'archive'>('home');
+  const [large, setLarge] = useState(() => { try { return localStorage.getItem('mom-flower-large-text') === 'true'; } catch { return false; } });
   const [archive, setArchive] = useState<FlowerCard[]>([]);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const albumInputRef = useRef<HTMLInputElement>(null);
-  const archiveSectionRef = useRef<HTMLDivElement>(null);
-  const [matchedFlower, setMatchedFlower] = useState<FlowerCard | null>(null);
-  const lang: "ko" | "en" = "en";
-
+  const [archiveReady, setArchiveReady] = useState(false);
+  const [archiveError, setArchiveError] = useState('');
+  const [guide, setGuide] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [result, setResult] = useState<FlowerResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [undo, setUndo] = useState<FlowerCard | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const albumRef = useRef<HTMLInputElement>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setShowSplash(false);
-    }, 1800);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
+    let active = true;
+    loadArchive().then(cards => { if (active) { setArchive(cards); setArchiveReady(true); } }).catch((e: Error) => { if (active) setArchiveError(e.message); });
+    return () => { active = false; requestRef.current?.abort(); if (toastTimer.current) clearTimeout(toastTimer.current); };
   }, []);
-
   useEffect(() => {
-    const savedArchive = localStorage.getItem("mom-is-flower-archive");
-
-    if (savedArchive) {
-      setArchive(JSON.parse(savedArchive));
-    }
-  }, []);
-
-  useEffect(() => {
-    ensureAnonymousLogin()
-      .then((user) => {
-        console.log("익명 로그인:", user.uid);
-      })
-      .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("mom-is-flower-archive", JSON.stringify(archive));
-    } catch (error) {
-      console.error("localStorage 저장 실패:", error);
-    }
-  }, [archive]);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-    };
-  }, []);
-
-  // 스마트폰 앨범/카메라 파일 선택 처리 핸들러
-  const resizeImageFileToDataUrl = (
-    file: File,
-    maxWidth = 1024,
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        const img = new Image();
-
-        img.onload = () => {
-          const scale = Math.min(1, maxWidth / img.width);
-          const canvas = document.createElement("canvas");
-
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
-
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            reject(new Error("이미지 처리에 실패했어요."));
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          resolve(canvas.toDataURL("image/jpeg", 0.9));
-        };
-
-        img.onerror = () => {
-          reject(new Error("이미지를 불러오지 못했어요."));
-        };
-
-        if (typeof reader.result === "string") {
-          img.src = reader.result;
-        } else {
-          reject(new Error("이미지 파일을 읽지 못했어요."));
-        }
-      };
-
-      reader.onerror = () => {
-        reject(new Error("이미지 파일을 읽지 못했어요."));
-      };
-
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleImageFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    try {
-      const file = event.target.files?.[0];
-
-      if (!file) {
-        return;
-      }
-
-      const imageUri = await resizeImageFileToDataUrl(file, 1024);
-
-      setImageSrc(imageUri);
-      await analyzeFlowerWithAI(imageUri);
-    } catch (error) {
-      console.error("이미지 처리 실패:", error);
-      const message =
-        error instanceof Error ? error.message : "알 수 없는 오류";
-      alert(`사진을 불러오는 중 문제가 발생했어요.\n${message}`);
-    } finally {
-      event.target.value = "";
-    }
-  };
-
-  const handleOpenCamera = () => {
-    cameraInputRef.current?.click();
-  };
-
-  const handleFetchAlbumPhoto = () => {
-    albumInputRef.current?.click();
-  };
-
-  const normalizeFlowerName = (name: string) => {
-    return name
-      .replace(/^추정:\s*/, "")
-      .replace(/\(추정\)/g, "")
-      .replace(/\s/g, "")
-      .trim();
-  };
-
-  // OpenAI GPT-4o 멀티모달 API 연동 함수
-  const analyzeFlowerWithAI = async (base64Image: string) => {
-    setIsAnalyzing(true);
-    setMatchedFlower(null);
-
-    try {
-      const response = await fetch("/api/analyze-flower", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image: base64Image,
-        }),
-      });
-
-      const parsedData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(parsedData.error || `API error: ${response.status}`);
-      }
-
-      // 3. 받아온 진짜 데이터를 상태에 주입
-      console.log("AI parsedData:", parsedData);
-
-      setFlowerData({
-        name: parsedData.name,
-        language: parsedData.language,
-        nameEn:
-          parsedData.nameEn ??
-          parsedData.englishName ??
-          parsedData.flowerNameEn ??
-          parsedData.name_en ??
-          parsedData.english_name,
-        languageEn:
-          parsedData.languageEn ??
-          parsedData.englishLanguage ??
-          parsedData.flowerLanguageEn ??
-          parsedData.language_en ??
-          parsedData.english_language,
-      });
-      const analyzedName = normalizeFlowerName(parsedData.name);
-
-      const existingFlower = archive.find(
-        (item) => normalizeFlowerName(item.name) === analyzedName,
-      );
-
-      if (existingFlower) {
-        setMatchedFlower(existingFlower);
-      }
-    } catch (error) {
-      console.error("AI 분석 실패:", error);
-      const message =
-        error instanceof Error ? error.message : "알 수 없는 오류";
-
-      alert(`꽃 분석 실패: ${message}`);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleSaveToArchive = async (
-    savedImage: string,
-    memo?: string,
-    story?: FlowerStory,
-    displayName?: string,
-    displayLanguage?: string,
-  ) => {
-    if (!flowerData) return;
-
-    const user = await ensureAnonymousLogin();
-    const normalizedName = normalizeFlowerName(flowerData.name);
-
-    const existingIndex = archive.findIndex(
-      (item) => normalizeFlowerName(item.name) === normalizedName,
-    );
-
-    const nextCard: FlowerCard = {
-      id: existingIndex >= 0 ? archive[existingIndex].id : crypto.randomUUID(),
-      image: savedImage,
-      name: displayName ?? flowerData.name,
-      language: displayLanguage ?? flowerData.language,
-      nameEn: flowerData.nameEn,
-      languageEn: flowerData.languageEn,
-      story:
-        story ??
-        (existingIndex >= 0 ? archive[existingIndex].story : undefined),
-      memo,
-      createdAt:
-        existingIndex >= 0
-          ? archive[existingIndex].createdAt
-          : new Date().toLocaleDateString("ko-KR"),
-    };
-
-    setArchive((prev) => {
-      if (existingIndex < 0) {
-        return [nextCard, ...prev];
-      }
-
-      return [
-        nextCard,
-        ...prev.slice(0, existingIndex),
-        ...prev.slice(existingIndex + 1),
-      ];
-    });
-
-    const firestoreCardData = {
-      id: nextCard.id,
-      image: nextCard.image,
-      name: nextCard.name,
-      language: nextCard.language,
-      memo: nextCard.memo ?? "",
-      createdAt: nextCard.createdAt,
-      uid: user.uid,
-      updatedAt: new Date().toISOString(),
-      ...(nextCard.story ? { story: nextCard.story } : {}),
-    };
-
-    await setDoc(
-      doc(collection(db, "flower_cards"), nextCard.id),
-      firestoreCardData,
-    );
-
-    console.log("Firestore 저장 완료:", nextCard.id);
-  };
-
-  const handleInstallApp = async () => {
-    if (!deferredPrompt) {
-      alert(
-        "홈 화면에 추가하는 방법입니다.\n\n안드로이드 Chrome/Samsung Internet:\n오른쪽 위 메뉴(⋮ 또는 ≡) → 홈 화면에 추가 또는 앱 설치\n\n아이폰 Safari:\n공유 버튼 → 홈 화면에 추가\n\n설치 버튼이 바로 뜨지 않아도 위 방법으로 추가할 수 있어요.",
-      );
-      return;
-    }
-
-    deferredPrompt.prompt();
-
-    const result = await deferredPrompt.userChoice;
-
-    console.log("PWA install result:", result);
-
-    setDeferredPrompt(null);
-  };
-
-  const handleShareApp = async () => {
-    const shareData = {
-      title: "엄마는 꽃",
-      text: "길가다 마주친 예쁜 꽃의 이름과 꽃말을 찾아주는 AI 들꽃 도감 앱이에요.",
-      url: "https://mom-is-flower.vercel.app",
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(shareData.url);
-        alert("앱 주소를 복사했어요.");
-      }
-    } catch (error) {
-      console.log("앱 공유 취소 또는 실패:", error);
-    }
-  };
-
-  const handleOpenNaezzal = () => {
-    window.open("https://naezzal4zzal-app.vercel.app", "_blank");
-  };
-
-  const getFlowerLevel = (count: number) => {
-    if (count >= 100) {
-      return {
-        level: 5,
-        title: "들꽃 전문가",
-        icon: "👑",
-        nextTarget: null,
-        description:
-          "꽃의 이름을 알고 계절을 읽을 수 있는 사람. 당신은 이제 진정한 들꽃 전문가입니다.",
-      };
-    }
-
-    if (count >= 60) {
-      return {
-        level: 4,
-        title: "꽃도감 수집가",
-        icon: "🌺",
-        nextTarget: 100,
-        description:
-          "수많은 꽃들이 당신의 기억 속에 피어났습니다. 작은 자연 도감이 완성되어 가고 있어요.",
-      };
-    }
-
-    if (count >= 30) {
-      return {
-        level: 3,
-        title: "들꽃 탐험가",
-        icon: "🌷",
-        nextTarget: 60,
-        description:
-          "이제는 꽃을 찾아 나서는 사람. 들판과 길섶에 숨은 아름다움을 발견하고 있네요.",
-      };
-    }
-
-    if (count >= 10) {
-      return {
-        level: 2,
-        title: "꽃길 산책가",
-        icon: "🌼",
-        nextTarget: 30,
-        description:
-          "꽃길을 걷다 보면 계절이 보입니다. 당신만의 꽃길이 만들어지고 있어요.",
-      };
-    }
-
-    return {
-      level: 1,
-      title: "들꽃 관심가",
-      icon: "🌱",
-      nextTarget: 10,
-      description:
-        "들꽃에 관심을 갖기 시작했네요. 이름을 불러주면 당신에게 꽃이 됩니다.",
-    };
-  };
-
-  const flowerLevelInfo = getFlowerLevel(archive.length);
-
-  const remainingToNextLevel =
-    flowerLevelInfo.nextTarget === null
-      ? 0
-      : Math.max(flowerLevelInfo.nextTarget - archive.length, 0);
-
-  const previousTarget =
-    flowerLevelInfo.level === 1
-      ? 0
-      : flowerLevelInfo.level === 2
-        ? 10
-        : flowerLevelInfo.level === 3
-          ? 30
-          : flowerLevelInfo.level === 4
-            ? 60
-            : 100;
-
-  const progressPercent =
-    flowerLevelInfo.nextTarget === null
-      ? 100
-      : Math.min(
-        100,
-        ((archive.length - previousTarget) /
-          (flowerLevelInfo.nextTarget - previousTarget)) *
-        100,
-      );
-
-  const handleOpenArchive = () => {
-    archiveSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
-  if (showSplash) {
-    return <SplashScreen />;
+    document.documentElement.dataset.largeText = String(large);
+    try { localStorage.setItem('mom-flower-large-text', String(large)); } catch { /* The preference still works without storage. */ }
+  }, [large]);
+  function notify(message: string) {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => { setToast(''); setUndo(null); }, 7000);
   }
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between px-6 py-4 select-none">
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleImageFile}
-      />
-
-      <input
-        ref={albumInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleImageFile}
-      />
-      {/* 1단계: 메인 인트로 헤더 */}
-      <header className="w-full text-center mt-4">
-        <h1 className="text-2xl font-black text-slate-800 tracking-tight mt-3">
-          엄마는 꽃 🌸
-        </h1>
-        <p className="text-sm font-medium text-slate-400 mt-1.5">
-          길가다 마주친 예쁜 꽃의 이름을 찾아줄게요
-        </p>
-      </header>
-
-      {/* 2단계: 메인 액션 및 로딩 패널 */}
-      <main className="w-full max-w-md flex flex-col items-center justify-center flex-1 py-6">
-        {isAnalyzing ? (
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="relative flex h-14 w-14">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-14 w-14 bg-pink-500 items-center justify-center text-xl">
-                🌸
-              </span>
-            </div>
-            <div className="mt-2">
-              <p className="text-pink-600 font-bold text-base">
-                AI가 꽃을 들여다보는 중
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                실시간으로 진짜 꽃 이름을 분석하고 있어요...
-              </p>
-            </div>
+  function navigate(next: 'home' | 'archive') { setPage(next); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  async function pick(kind: 'camera' | 'album') {
+    if (!isToss) { (kind === 'camera' ? cameraRef : albumRef).current?.click(); return; }
+    setPicking(true); setError('');
+    try { const photo = await pickTossPhoto(kind); if (photo) { setPending(photo); setResult(null); } }
+    catch (e) { if (!/cancel|abort/i.test(String(e))) setError(e instanceof Error ? e.message : '사진을 가져오지 못했어요. 다시 시도해 주세요.'); }
+    finally { setPicking(false); }
+  }
+  async function fileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0]; if (!file) return;
+    setPicking(true); setError('');
+    try { setPending(await readPhoto(file)); setResult(null); }
+    catch (e) { setError(e instanceof Error ? e.message : '사진을 불러오지 못했어요.'); }
+    finally { input.value = ''; setPicking(false); }
+  }
+  async function analyze() {
+    if (!pending || busy) return;
+    setBusy(true); setError(''); setResult(null); track('flower_analyze_started');
+    const controller = new AbortController(); requestRef.current = controller;
+    try {
+      const data = await postApi('analyze-flower', { image: pending }, controller.signal);
+      if (!controller.signal.aborted) { setResult(parseFlower(data)); track('flower_analyze_succeeded'); }
+    } catch (e) { if (!controller.signal.aborted) { setError(e instanceof Error ? e.message : '꽃을 찾지 못했어요. 다시 시도해 주세요.'); track('flower_analyze_failed'); } }
+    finally { if (!controller.signal.aborted) setBusy(false); }
+  }
+  function closePhoto() { requestRef.current?.abort(); setBusy(false); setPending(null); setResult(null); setError(''); }
+  async function save(card: FlowerCard) {
+    if (!archiveReady) throw new Error('꽃도감을 사용할 수 없어요. 꽃카드를 파일로 저장해 주세요.');
+    await changeCard(card);
+    track('flower_card_saved');
+    setArchive(previous => [card, ...previous.filter(item => item.id !== card.id)]);
+    notify('나의 꽃도감에 소중히 담았어요.');
+  }
+  async function remove(card: FlowerCard) {
+    await changeCard(card.id);
+    setArchive(previous => previous.filter(item => item.id !== card.id));
+    setUndo(card); notify('꽃 기록을 지웠어요.');
+  }
+  async function restore() {
+    if (!undo) return;
+    try { await save(undo); setUndo(null); notify('꽃 기록을 다시 담았어요.'); } catch (e) { notify(e instanceof Error ? e.message : '기록을 복원하지 못했어요.'); }
+  }
+  async function shareApp() {
+    try {
+      const text = '산책길에 만난 꽃, 이름이 궁금하다면? 엄마는꽃에서 꽃 이름과 이야기를 만나 보세요.\nhttps://mom-is-flower.vercel.app';
+      if (isToss) { const { share } = await import('@apps-in-toss/web-framework'); await share({ message: text }); }
+      else if (navigator.share) await navigator.share({ title: '엄마는꽃', text, url: 'https://mom-is-flower.vercel.app' });
+      else { await navigator.clipboard.writeText(text); notify('앱 주소를 복사했어요. 친구에게 붙여 넣어 주세요.'); }
+    } catch (e) { if (!(e instanceof DOMException && e.name === 'AbortError')) notify('공유하지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+  }
+  return <div className="app-shell">
+    <a className="skip-link" href="#main-content">본문으로 이동</a>
+    <header className="app-header">
+      <button className="brand" onClick={() => navigate('home')} aria-label="엄마는꽃 처음 화면"><span className="brand-symbol"><Flower2 size={29} strokeWidth={1.5} /></span><span>엄마는꽃<small>당신의 일상에 피어나는 꽃</small></span></button>
+      <button className={`text-size-button ${large ? 'is-active' : ''}`} aria-pressed={large} onClick={() => setLarge(!large)}><Type size={21} />큰 글씨{large && <Check size={17} />}</button>
+    </header>
+    <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={fileSelected} className="visually-hidden" aria-label="카메라로 꽃 사진 찍기" tabIndex={-1} />
+    <input ref={albumRef} type="file" accept="image/*" onChange={fileSelected} className="visually-hidden" aria-label="앨범에서 꽃 사진 선택" tabIndex={-1} />
+    <main id="main-content">
+      {page === 'home' ? <>
+        <section className="home-hero" aria-labelledby="hero-title">
+          <div className="hero-copy"><span className="eyebrow"><Leaf size={16} /> 꽃과 가까워지는 시간</span>
+            <h1 id="hero-title">무슨 꽃일까?<br />이름을 알면,<br className="desktop-break" /> <em>더 예뻐지는 꽃.</em></h1>
+            <p className="hero-description">산책길에 만난 꽃 한 송이.<br />사진으로 이름과 꽃말을 알아보세요.</p>
+            <div className="hero-actions"><button className="button button-primary" disabled={picking} onClick={() => void pick('camera')}><Camera size={23} />{picking ? '사진을 준비하고 있어요' : '사진 찍어 꽃 이름 찾기'}<ArrowRight size={21} className="button-arrow" /></button>
+              <button className="button button-secondary" disabled={picking} onClick={() => void pick('album')}><ImageIcon size={22} />앨범에서 사진 고르기</button></div>
+            <button className="subtle-link" onClick={() => setGuide(true)}>처음이세요? 이렇게 찍어 보세요 <ChevronRight size={17} /></button>
           </div>
-        ) : (
-          <div className="w-full flex flex-col gap-3.5 relative">
-            <button
-              type="button"
-              onClick={handleOpenCamera}
-              className="w-full py-5 bg-pink-500 text-white font-bold rounded-2xl shadow-lg shadow-pink-500/10 hover:bg-pink-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 text-base cursor-pointer"
-            >
-              <Camera size={22} />
-              사진 찍어 이름 찾기
-            </button>
-
-            <button
-              type="button"
-              onClick={handleFetchAlbumPhoto}
-              className="w-full py-4.5 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200/80 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 text-base cursor-pointer"
-            >
-              <ImageIcon size={20} className="text-slate-400" />
-              앨범에서 사진 가져오기
-            </button>
-          </div>
-        )}
-      </main>
-
-      <button
-        type="button"
-        onClick={handleOpenArchive}
-        className="w-full max-w-md mb-4 rounded-3xl bg-white border border-pink-100 p-5 shadow-sm text-left active:scale-[0.99] transition-all"
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl">{flowerLevelInfo.icon}</span>
-
-            <div>
-              <div className="text-lg font-black text-slate-800">
-                나의 꽃 도감
-                <span className="ml-2 rounded-full bg-pink-100 px-2 py-1 text-sm text-pink-500">
-                  {archive.length}송이
-                </span>
-              </div>
-
-              <div className="mt-1 text-sm font-bold text-pink-500">
-                Lv.{flowerLevelInfo.level} {flowerLevelInfo.title}
-              </div>
-
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                {flowerLevelInfo.description}
-              </p>
-            </div>
-          </div>
-
-          <BookOpen size={22} className="text-pink-400 shrink-0 mt-1" />
-        </div>
-
-        <div className="mt-4 flex justify-between text-xs text-slate-500">
-          <span>현재 {archive.length}송이 수집</span>
-          <span>
-            {flowerLevelInfo.nextTarget === null
-              ? "최고 레벨 달성"
-              : `다음 레벨까지 ${remainingToNextLevel}송이`}
-          </span>
-        </div>
-
-        <div className="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-pink-400"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </button>
-
-      <div className="w-full max-w-md my-5 flex items-center">
-        <div className="flex-1 border-t border-dashed border-pink-100" />
-        <span className="px-3 text-xs text-slate-400">더 알아보기</span>
-        <div className="flex-1 border-t border-dashed border-pink-100" />
-      </div>
-
-      <div className="w-full max-w-md mb-6 flex flex-col gap-3">
-        <button
-          onClick={handleShareApp}
-          className="w-full py-3 rounded-2xl bg-white border border-pink-100 text-pink-500 font-bold shadow-sm hover:bg-pink-50 transition-all"
-        >
-          💌 친구와 앱 공유하기
-        </button>
-
-        <button
-          onClick={handleInstallApp}
-          className="w-full py-3 rounded-2xl bg-slate-800 text-white font-bold shadow hover:bg-slate-700 transition-all"
-        >
-          📲 홈 화면에 추가하기
-        </button>
-
-        <div className="mt-4 rounded-3xl border border-pink-100 bg-pink-50/60 p-5 text-center shadow-sm">
-          <img
-            src="/bamnamulab-logo.png"
-            alt="밤나무랩"
-            className="mx-auto mb-3 h-12 w-12 object-contain"
-          />
-
-          <p className="text-sm font-bold text-slate-700">
-            밤나무랩이 만든 다른 앱도 경험해보세요
-          </p>
-
-          <button
-            type="button"
-            onClick={handleOpenNaezzal}
-            className="mt-4 w-full rounded-2xl bg-white border border-pink-100 px-4 py-4 shadow-sm active:scale-[0.99] transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <img
-                src="/naezzal4zzal-logo.png"
-                alt="내짤4짤"
-                className="w-14 h-14 rounded-xl object-cover"
-              />
-
-              <div className="text-left">
-                <div className="text-lg font-black text-pink-500">내짤4짤</div>
-
-                <div className="text-sm leading-5 text-slate-500 mt-1">
-                  서랍에서 뒹굴고 있는 네컷사진을
-                  <br />
-                  귀여운 움짤로 만들어주는 앱
-                </div>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* 하단 도감 히스토리 판 */}
-      <div ref={archiveSectionRef} className="w-full max-w-md">
-        <FlowerArchiver
-          archive={archive}
-          onDelete={(id) =>
-            setArchive((prev) => prev.filter((card) => card.id !== id))
-          }
-        />
-      </div>
-
-      <footer className="mt-8 mb-6 text-center text-xs text-slate-400">
-        © 2026 엄마는 꽃 · AI 들꽃 도감
-      </footer>
-
-      {/* 3단계: 분석 완료 폴라로이드 팝업 모달 */}
-      {flowerData && imageSrc && (
-        <PolaroidResult
-          imageSrc={imageSrc}
-          flowerName={flowerData.name}
-          flowerLanguage={flowerData.language}
-          flowerNameEn={flowerData.nameEn}
-          flowerLanguageEn={flowerData.languageEn}
-          lang={lang}
-          matchedFlower={matchedFlower}
-          onClose={() => {
-            setFlowerData(null);
-            setMatchedFlower(null);
-          }}
-          onSaveToArchive={handleSaveToArchive}
-        />
-      )}
-    </div>
-  );
+          <div className="hero-image"><img src="/flower-hero.webp" alt="햇살 아래 연분홍 코스모스가 피어 있는 꽃밭" fetchPriority="high" /><span className="photo-note"><Flower2 size={17} />작은 발견이, 오늘의 행복이 되도록</span><span className="photo-caption">엄마는꽃 · 당신의 작은 꽃 산책</span></div>
+        </section>
+        {error && !pending && <div className="inline-error" role="alert">{error}</div>}
+        <section className="how-it-works" aria-label="꽃을 만나는 세 가지 방법">
+          <div><span className="step-number">01</span><strong>꽃을 찍고</strong><p>한 송이가 잘 보이게</p></div><div><span className="step-number">02</span><strong>이야기를 읽고</strong><p>이름부터 꽃말까지</p></div><div><span className="step-number">03</span><strong>추억으로 간직해요</strong><p>나만의 꽃카드로</p></div>
+        </section>
+        <section className="garden-preview"><div className="section-title"><div><span className="eyebrow">MY LITTLE GARDEN</span><h2>나의 작은 꽃도감 <span>{archive.length}</span></h2></div><button className="subtle-link" onClick={() => navigate('archive')}>모두 보기 <ChevronRight size={18} /></button></div>
+          {archive.length ? <div className="recent-cards">{archive.slice(0, 3).map(card => <button key={card.id} className="recent-card" onClick={() => navigate('archive')}><img src={card.image} alt={`${card.name} 꽃카드`} /><strong>{card.name}</strong><span>{card.memo || '꽃을 만난 행복한 날'}</span></button>)}</div> : <div className="garden-empty"><span className="empty-flower"><Flower2 size={38} strokeWidth={1.25} /></span><div><h3>첫 번째 꽃을 기다리고 있어요</h3><p>오늘 만난 꽃에 이름을 붙여 주세요.<br />당신만의 꽃도감이 시작돼요.</p></div><button className="round-arrow" aria-label="앨범에서 첫 꽃 고르기" onClick={() => void pick('album')}><ArrowRight size={23} /></button></div>}
+          {archiveError && <p className="inline-error" role="alert">{archiveError}</p>}
+        </section>
+        <section className="sharing-note"><Heart size={22} strokeWidth={1.5} /><div><h3>좋은 건, 함께 보고 싶으니까</h3><p>꽃을 좋아하는 소중한 사람에게 알려 주세요.</p></div><button className="icon-button" aria-label="엄마는꽃 앱 공유하기" onClick={() => void shareApp()}><Share2 size={22} /></button></section>
+      </> : <FlowerArchiver archive={archive} loading={!archiveReady && !archiveError} error={archiveError} onDelete={remove} onSave={save} onAdd={() => void pick('camera')} notify={notify} />}
+      <footer className="app-footer"><Flower2 size={18} /><p>꽃을 만난 오늘도, 당신은 꽃이에요.</p><small>© 2026 BamnamuLab · 엄마는꽃</small></footer>
+    </main>
+    <nav className="bottom-nav" aria-label="주요 메뉴"><button aria-current={page === 'home' ? 'page' : undefined} onClick={() => navigate('home')}><Search size={23} /><span>꽃 이름 찾기</span></button><button aria-current={page === 'archive' ? 'page' : undefined} onClick={() => navigate('archive')}><BookOpen size={23} /><span>나의 꽃도감</span><span className="nav-count">{archive.length}</span></button></nav>
+    {guide && <Dialog title="꽃 사진, 이렇게 찍어 보세요" onClose={() => setGuide(false)}><div className="guide-visual"><Flower2 size={65} strokeWidth={1} /><span className="focus-corner top-left" /><span className="focus-corner bottom-right" /></div><ol className="guide-list"><li><strong>꽃 한 송이를 가까이</strong><p>꽃잎과 가운데 부분이 또렷하게 보이게 찍어 주세요.</p></li><li><strong>밝은 곳에서 흔들림 없이</strong><p>여러 꽃이 겹치면 이름을 찾기 어려울 수 있어요.</p></li><li><strong>찍어 둔 사진도 괜찮아요</strong><p>앨범에서 마음에 드는 꽃 사진을 골라 보세요.</p></li></ol><button className="button button-primary" onClick={() => setGuide(false)}>알겠어요</button></Dialog>}
+    {pending && !result && <Dialog title={busy ? '꽃의 이름을 찾고 있어요' : '이 꽃이 궁금하신가요?'} onClose={closePhoto}><img src={pending} alt="분석할 꽃 사진" className="photo-preview" />{busy ? <div className="analysis-state" role="status"><LoaderCircle size={30} className="spin" /><h3>꽃잎을 하나씩 살펴보고 있어요</h3><p>이름과 꽃말을 찾는 데 잠시 걸릴 수 있어요.</p><button className="button button-secondary" onClick={closePhoto}>그만 찾기</button></div> : <><p className="photo-consent">선택한 사진은 꽃을 알아보기 위해 AI 서비스(OpenAI)로 전송돼요.</p>{error && <p className="inline-error" role="alert">{error}</p>}<button className="button button-primary" onClick={() => void analyze()}><Search size={22} />{error ? '이 사진으로 다시 찾기' : '이 사진으로 꽃 이름 찾기'}</button><button className="button button-text" onClick={closePhoto}>다른 사진 고르기</button></>}</Dialog>}
+    {pending && result && <PolaroidResult photo={pending} result={result} onClose={closePhoto} onSave={save} notify={notify} />}
+    {toast && <div className="toast" role="status"><Check size={20} /><span>{toast}</span>{undo && <button onClick={() => void restore()}>되돌리기</button>}<button className="toast-dismiss" aria-label="알림 닫기" onClick={() => { setToast(''); setUndo(null); }}>×</button></div>}
+  </div>;
 }

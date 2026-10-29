@@ -1,8 +1,9 @@
 {
-  "rewrites": [
-    {
-      "source": "/((?!robots\\.txt|sitemap\\.xml|favicon\\.png|app_icon\\.png|app_icon_192\\.png|mom-is-flower-share\\.png|splash\\.png|assets/.*).*)",
-      "destination": "/index.html"
-    }
-  ]
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/analyze-flower.ts": { "maxDuration": 30 },
+    "api/flower-story.ts": { "maxDuration": 30 }
+  }
 }

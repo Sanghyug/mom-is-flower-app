@@ -1,182 +1,33 @@
-import { useState } from "react";
-import { Share2, Trash2, X } from "lucide-react";
-import type { FlowerCard } from "../App";
+import { useState } from 'react';
+import { Camera, Flower2, Search, Trash2 } from 'lucide-react';
+import PolaroidResult from './PolaroidResult';
+import Dialog from './Dialog';
+import type { FlowerCard } from '../types';
 
-interface Props {
-  archive: FlowerCard[];
-  onDelete: (id: string) => void;
-}
-
-export default function FlowerArchiver({ archive, onDelete }: Props) {
+export default function FlowerArchiver({ archive, loading, error, onDelete, onSave, onAdd, notify }: {
+  archive: FlowerCard[]; loading: boolean; error: string; onDelete: (card: FlowerCard) => Promise<void>;
+  onSave: (card: FlowerCard) => Promise<void>; onAdd: () => void; notify: (message: string) => void;
+}) {
+  const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<FlowerCard | null>(null);
-
-  const uniqueFlowerCount = new Set(
-    archive.map((card) => card.name.replace(/\s/g, "").trim()),
-  ).size;
-
-  const level =
-    uniqueFlowerCount >= 30
-      ? "꽃도감 레벨 3"
-      : uniqueFlowerCount >= 10
-        ? "꽃도감 레벨 2"
-        : "꽃도감 레벨 1";
-
-  const handleShare = async (card: FlowerCard) => {
-    try {
-      const response = await fetch(card.image);
-      const blob = await response.blob();
-      const file = new File([blob], `${card.name}_card.png`, {
-        type: "image/png",
-      });
-
-      const isEnglishCard = !!card.nameEn;
-
-      const title = isEnglishCard
-        ? `${card.name} Flower Card`
-        : `${card.name} 꽃 카드`;
-
-      const meaningLabel = isEnglishCard
-        ? "Flower meaning"
-        : "꽃말";
-
-      const memoLabel = isEnglishCard
-        ? "Memo"
-        : "메모";
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title,
-          text: `${meaningLabel}: ${card.language}`,
-          files: [file],
-        });
-        return;
-      }
-
-      if (navigator.share) {
-        await navigator.share({
-          title,
-          text: `${card.name}\n${meaningLabel}: ${card.language}${card.memo ? `\n${memoLabel}: ${card.memo}` : ""
-            }`,
-        });
-        return;
-      }
-
-      alert(
-        "현재 브라우저에서는 공유창을 열 수 없어요. 토스 앱 안에서 다시 시도하거나, 이미지를 저장한 뒤 공유해 주세요.",
-      );
-    } catch (error) {
-      console.error("사진첩 공유 중 오류:", error);
-      alert("공유 중 오류가 발생했습니다.");
-    }
-  };
-
-  return (
-    <div className="w-full max-w-md border-t border-slate-100 pt-6 mb-4">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
-          나만의 꽃 도감 🗂️
-          <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full font-semibold">
-            {archive.length}송이
-          </span>
-        </h2>
-
-        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-bold">
-          {level}
-        </span>
-      </div>
-
-      {archive.length === 0 ? (
-        <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-          <span className="text-3xl mb-2">🌱</span>
-          <p className="text-sm font-medium text-slate-400">
-            아직 수집한 꽃이 없어요.
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            첫 번째 길가다 만난 꽃을 피워보세요!
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {archive.map((card) => (
-            <button
-              key={card.id}
-              onClick={() => setSelected(card)}
-              className="aspect-[3/4] bg-white p-1 rounded shadow-sm border border-slate-100 overflow-hidden"
-            >
-              <img
-                src={card.image}
-                alt={card.name}
-                className="w-full aspect-square object-cover rounded-sm"
-              />
-              <p className="text-[10px] font-bold text-slate-700 mt-1 truncate">
-                {card.name}
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {selected && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-5">
-          <div className="bg-white rounded-2xl p-4 w-full max-w-sm">
-            <div className="flex justify-end mb-2">
-              <button onClick={() => setSelected(null)}>
-                <X size={22} />
-              </button>
-            </div>
-
-            <img
-              src={selected.image}
-              alt={selected.name}
-              className="w-full rounded-xl"
-            />
-
-            <div className="mt-3">
-              <h3 className="text-lg font-black text-slate-800">
-                {selected.name}
-              </h3>
-              <p className="text-sm font-semibold text-pink-500 mt-1">
-                {/^[A-Za-z\s-]+$/.test(selected.name)
-                  ? "Flower meaning"
-                  : "꽃말"}
-                {" : "}
-                {selected.language}
-              </p>
-              {selected.memo && (
-                <p className="text-sm text-slate-500 mt-2">
-                  ✍️ {selected.memo}
-                </p>
-              )}
-              {selected.story && (
-                <p className="text-xs text-slate-400 mt-2">
-                  꽃 이야기가 저장되어 있어요.
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => handleShare(selected)}
-                className="flex-1 py-3 rounded-xl bg-pink-500 text-white font-bold flex items-center justify-center gap-2"
-              >
-                <Share2 size={18} />
-                공유하기
-              </button>
-
-              <button
-                onClick={() => {
-                  onDelete(selected.id);
-                  setSelected(null);
-                }}
-                className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold flex items-center justify-center gap-2"
-              >
-                <Trash2 size={18} />
-                삭제하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const [deleting, setDeleting] = useState<FlowerCard | null>(null);
+  const [working, setWorking] = useState(false);
+  const cards = archive.filter(card => `${card.name} ${card.language} ${card.memo || ''}`.includes(query.trim()));
+  async function remove() {
+    if (!deleting || working) return;
+    setWorking(true);
+    try { await onDelete(deleting); setDeleting(null); }
+    catch (e) { notify(e instanceof Error ? e.message : '꽃 기록을 지우지 못했어요.'); }
+    finally { setWorking(false); }
+  }
+  return <section className="archive-page"><span className="eyebrow"><LeafIcon /> MY LITTLE GARDEN</span><div className="archive-title"><div><h1>나의 꽃도감</h1><p>꽃을 만났던 순간을 다시 꺼내 보세요.</p></div><span className="archive-total">{archive.length}<small>개의 추억</small></span></div>
+    <div className="archive-toolbar"><label className="search-field"><Search size={21} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="꽃 이름이나 메모로 찾기" aria-label="꽃도감 검색" /></label><button className="button button-primary" onClick={onAdd}><Camera size={21} />새 꽃 담기</button></div>
+    {error && <p className="inline-error" role="alert">{error}</p>}
+    {loading ? <p className="garden-empty" role="status">꽃도감을 열고 있어요.</p> : cards.length ? <div className="archive-grid">{cards.map(card => <article className="archive-card" key={card.id}><button className="archive-card-open" onClick={() => setSelected(card)} aria-label={`${card.name} 꽃 기록 열기`}><img src={card.image} alt={`${card.name} 꽃카드`} loading="lazy" /><div><h2>{card.name}</h2><p>{card.memo || card.language}</p><time>{formatDate(card.createdAt)}</time></div></button><button className="archive-delete icon-button" aria-label={`${card.name} 기록 삭제`} onClick={() => setDeleting(card)}><Trash2 size={19} /></button></article>)}</div> : <div className="archive-empty"><Flower2 size={60} strokeWidth={1} /><h2>{query ? '아직 이 꽃은 없네요' : '당신의 첫 꽃을 기다려요'}</h2><p>{query ? '다른 이름이나 메모로 찾아보세요.' : '꽃 이름과 그날의 마음을 차곡차곡 담아 보세요.'}</p>{!query && <button className="button button-primary" onClick={onAdd}><Camera size={22} />첫 번째 꽃 만나기</button>}</div>}
+    <p className="storage-note">이 기기에 저장된 꽃도감이에요. 앱 데이터나 브라우저 기록을 지우면 사라질 수 있어요.</p>
+    {selected && <PolaroidResult photo={selected.image} result={selected} saved={selected} onClose={() => setSelected(null)} onSave={onSave} notify={notify} />}
+    {deleting && <Dialog title="이 꽃 기록을 지울까요?" onClose={() => { if (!working) setDeleting(null); }}><p className="delete-description">{deleting.name}와 함께 남긴 사진과 메모가 꽃도감에서 지워져요.</p><button className="button button-danger" disabled={working} onClick={() => void remove()}>{working ? '지우고 있어요' : '이 기록 지우기'}</button><button className="button button-secondary" disabled={working} onClick={() => setDeleting(null)}>그대로 간직하기</button></Dialog>}
+  </section>;
 }
+function LeafIcon() { return <Flower2 size={17} />; }
+function formatDate(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }); }
