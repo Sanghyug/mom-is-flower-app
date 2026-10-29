@@ -1,11 +1,11 @@
 export async function makeCard(photo: string, name: string, meaning: string, memo: string): Promise<string> {
   await document.fonts.ready;
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('꽃카드를 만들지 못했어요. 다시 시도해 주세요.')); img.src = photo;
+    const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('식물카드를 만들지 못했어요. 다시 시도해 주세요.')); img.src = photo;
   });
   const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 990;
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('꽃카드를 만들지 못했어요.');
+  if (!context) throw new Error('식물카드를 만들지 못했어요.');
   const ctx: CanvasRenderingContext2D = context;
   ctx.fillStyle = '#fcfaf4'; ctx.fillRect(0, 0, 720, 990);
   const side = Math.min(image.width, image.height);
@@ -23,8 +23,8 @@ export async function makeCard(photo: string, name: string, meaning: string, mem
     }
     if (rows < maxLines) ctx.fillText(line, 42, y);
   }
-  ctx.fillStyle = '#9a5261'; ctx.font = '26px sans-serif'; wrap(`꽃말 · ${meaning}`, 802, 2);
-  ctx.fillStyle = '#525d54'; ctx.font = '25px sans-serif'; wrap(memo || '꽃을 만난 오늘도, 당신은 꽃이에요.', 864, 2);
+  ctx.fillStyle = '#9a5261'; ctx.font = '26px sans-serif'; wrap(`상징·꽃말 · ${meaning}`, 802, 2);
+  ctx.fillStyle = '#525d54'; ctx.font = '25px sans-serif'; wrap(memo || '식물을 만난 오늘도, 당신은 꽃이에요.', 864, 2);
   ctx.strokeStyle = '#d6ddcf'; ctx.beginPath(); ctx.moveTo(42, 927); ctx.lineTo(678, 927); ctx.stroke();
   ctx.fillStyle = '#637661'; ctx.font = '20px sans-serif'; ctx.fillText('엄마는꽃', 42, 960);
   ctx.textAlign = 'right'; ctx.fillText(new Date().toLocaleDateString('ko-KR'), 678, 960);

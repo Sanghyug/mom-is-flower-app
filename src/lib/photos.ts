@@ -48,14 +48,14 @@ export async function shareCard(dataUrl: string, name: string, meaning: string) 
   const blob = await (await fetch(dataUrl)).blob();
   const file = new File([blob], `mom-is-flower.${blob.type === 'image/png' ? 'png' : 'jpg'}`, { type: blob.type || 'image/jpeg' });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 꽃말은 ${meaning}\nhttps://mom-is-flower.vercel.app`, files: [file] });
-    return '꽃카드를 공유했어요.';
+    await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\nhttps://mom-is-flower.vercel.app`, files: [file] });
+    return '식물카드를 공유했어요.';
   }
   if (isToss) {
     const { share } = await import('@apps-in-toss/web-framework');
-    await share({ message: `오늘 만난 꽃은 ${name}. 꽃말은 ${meaning}이에요.\n엄마는꽃에서 나만의 꽃카드를 만들어 보세요.\nhttps://mom-is-flower.vercel.app` });
-    return '꽃 이름과 꽃말을 공유했어요.';
+    await share({ message: `오늘 만난 식물은 ${name}. 상징과 꽃말은 ${meaning}이에요.\n엄마는꽃에서 나만의 식물카드를 만들어 보세요.\nhttps://mom-is-flower.vercel.app` });
+    return '식물 이름과 꽃말을 공유했어요.';
   }
   await downloadCard(dataUrl, name);
-  return '꽃카드를 파일로 저장했어요. 메신저에서 사진으로 보내 주세요.';
+  return '식물카드를 파일로 저장했어요. 메신저에서 사진으로 보내 주세요.';
 }

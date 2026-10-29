@@ -1,9 +1,9 @@
 import type { FlowerResult, FlowerStory } from '../types';
 
 export const storyFields: [keyof FlowerStory, string][] = [
-  ['summary', '이 꽃을 소개해요'], ['season', '꽃이 피는 계절'],
+  ['summary', '이 식물을 소개해요'], ['season', '계절별 모습'],
   ['habitat', '어디에서 만날까요?'], ['features', '이렇게 알아보세요'],
-  ['meaningOrigin', '꽃말에 담긴 마음'], ['origin', '이름과 고향'],
+  ['meaningOrigin', '상징과 꽃말에 담긴 마음'], ['origin', '이름과 고향'],
   ['legend', '전해 내려오는 이야기'], ['art', '문학과 예술 속에서'],
 ];
 
@@ -21,8 +21,8 @@ export async function postApi(path: string, body: unknown, signal?: AbortSignal)
       body: JSON.stringify(body), signal: controller.signal,
     });
     if (!response.ok) {
-      if (response.status === 429) throw new Error('지금은 꽃을 찾는 분들이 많아요. 잠시 후 다시 시도해 주세요.');
-      throw new Error('꽃 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+      if (response.status === 429) throw new Error('지금은 식물을 찾는 분들이 많아요. 잠시 후 다시 시도해 주세요.');
+      throw new Error('식물 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
     }
     return await response.json();
   } catch (error) {
@@ -36,8 +36,8 @@ export async function postApi(path: string, body: unknown, signal?: AbortSignal)
 }
 export function parseFlower(data: unknown): FlowerResult {
   const value = data as Record<string, unknown> | null;
-  if (!value || value.found === false) throw new Error('꽃을 알아보기 어려워요. 꽃 한 송이가 크게 나오도록 다시 찍어 주세요.');
-  if (typeof value.name !== 'string' || !value.name.trim() || typeof value.language !== 'string') throw new Error('꽃 이름을 확인하지 못했어요. 다른 사진으로 다시 시도해 주세요.');
+  if (!value || value.found === false) throw new Error('식물을 알아보기 어려워요. 잎이나 꽃이 또렷하게 보이도록 다시 찍어 주세요.');
+  if (typeof value.name !== 'string' || !value.name.trim() || typeof value.language !== 'string') throw new Error('식물 이름을 확인하지 못했어요. 다른 사진으로 다시 시도해 주세요.');
   return {
     name: value.name.slice(0, 100), language: value.language.slice(0, 300),
     nameEn: typeof value.nameEn === 'string' ? value.nameEn : undefined,
@@ -47,8 +47,8 @@ export function parseFlower(data: unknown): FlowerResult {
   };
 }
 export function parseStory(data: unknown): FlowerStory {
-  if (!data || typeof data !== 'object') throw new Error('꽃 이야기를 읽어오지 못했어요. 다시 시도해 주세요.');
+  if (!data || typeof data !== 'object') throw new Error('식물 이야기를 읽어오지 못했어요. 다시 시도해 주세요.');
   const value = data as Record<string, unknown>;
-  if (!storyFields.every(([key]) => typeof value[key] === 'string')) throw new Error('꽃 이야기를 읽어오지 못했어요. 다시 시도해 주세요.');
+  if (!storyFields.every(([key]) => typeof value[key] === 'string')) throw new Error('식물 이야기를 읽어오지 못했어요. 다시 시도해 주세요.');
   return Object.fromEntries(storyFields.map(([key]) => [key, String(value[key]).slice(0, 2000)])) as FlowerStory;
 }
