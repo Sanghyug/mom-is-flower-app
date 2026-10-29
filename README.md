@@ -99,3 +99,13 @@ OpenAI 이미지 입력 참고: https://developers.openai.com/api/docs/guides/im
 현재 로컬 미리보기는 실제 AI·광고·공유를 실행하지 않는 명시적 체험 모드입니다.
 실제 운영에는 서비스 계정·Firestore 규칙·광고 그룹 ID·공유 모듈 ID 설정과 기기 테스트가 필요합니다.
 상세 정책·한도·보상 이벤트의 검증 한계는 docs/magnifier-economy.md를 확인하세요.
+
+
+## 2026-10-30 식물 이야기·카드·배너
+- 식물 분석 한 번(돋보기 1개)에 이름, 꽃말, 꽃말의 유래, 관련 신화·설화·전설을 함께 반환합니다. 알려지지 않은 전승은 창작하지 않도록 요청하며 누락 정보는 확인되지 않았다고 표시합니다. AI 정보의 사실성은 보장되지 않습니다.
+- 카드 날짜는 최초 생성 시 고정합니다. 사진·이름·꽃말·직접 쓴 메모를 JPEG로 만들고, 지원 브라우저는 Web Share 파일 공유를 사용합니다. 토스 공식 share API는 텍스트만 지원하므로 미지원 기기에서는 saveBase64Data로 저장 후 메신저에서 사진을 선택하도록 안내합니다. 직접 이미지 공유가 토스 실기기에서 검증된 것은 아닙니다.
+- 배너는 콘텐츠 아래/푸터 위 한 곳에만 표시합니다. VITE_TOSS_BANNER_AD_GROUP_ID가 발급·설정되고 SDK 지원이 확인된 경우만 초기화합니다. 노필·실패 시 숨기고 언마운트 시 destroy합니다. 인위적인 광고 새로고침은 없습니다.
+- 기존 Firebase flower_cards 및 프로젝트 설정은 변경하거나 삭제하지 않습니다. 새 UI 도감은 기존과 같이 기기 저장이며 기존 Firebase 기록 자동 복원/동기화는 아직 연결되지 않았습니다. 서버 Firebase Admin 자격 증명과 실제 광고 ID 설정, 토스 실기기 검증이 출시 전에 필요합니다.
+- 공식 근거: https://developers-apps-in-toss.toss.im/documentation/common/growth/share/share-message , https://developers-apps-in-toss.toss.im/documentation/common/monetization/iaa/web-banner
+
+배너 그룹 등록 완료: 엄마는꽃 식물도감 배너 / 문구 강조 / 2026-10-30. 콘솔 상태는 구글 반영 중이며 SDK용 광고 ID는 아직 표시되지 않습니다. 콘솔 URL의 groupId를 발급된 SDK ID로 간주하지 않습니다.

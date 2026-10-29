@@ -6,7 +6,7 @@ export const creditPolicy = {
   shareDailyLimit: 1,
   adDailyLimit: 5,
   identifyDailyLimit: 50,
-  storyCost: null,
+  storyCost: 0,
 } as const;
 export type RewardKind = 'share' | 'ad';
 export type Wallet = { balance: number; day: string; searches: number; shares: number; ads: number };

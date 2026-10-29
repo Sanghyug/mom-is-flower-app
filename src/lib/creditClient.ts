@@ -78,7 +78,7 @@ export async function recognizeWithCredits(image: string, requestId: string, sig
     if (!ledger.results[requestId]) {
       if (ledger.wallet.balance < creditPolicy.identify) throw new Error('돋보기가 부족해요. 충전한 뒤 다시 찾아보세요.');
       ledger.wallet.balance -= creditPolicy.identify;
-      ledger.results[requestId] = { found: true, name: '코스모스 · 화면 체험용', language: '실제 AI 분석이 아닌 모의 응답이에요', confidence: 'medium' };
+      ledger.results[requestId] = { found: true, name: '코스모스 · 화면 체험용', language: '실제 AI 분석이 아닌 모의 응답이에요', confidence: 'medium', story: { summary: '화면 체험용 예시예요. 실제 식물 분석 결과가 아닙니다.', habitat: '햇빛이 드는 곳에서 만나는 식물의 서식지를 안내해요.', origin: '식물 이름의 유래를 함께 알아봐요.', season: '꽃이 피는 계절을 안내해요.', features: '잎과 꽃의 특징을 정리해요.', meaningOrigin: '실제 분석에서는 알려진 꽃말의 유래를 정리하고, 불확실하면 확인되지 않았다고 알려드려요.', legend: '알려진 신화·설화·전설이 있을 때만 소개해요. 이 화면은 예시이므로 전설을 생성하지 않아요.', art: '문화 속 식물에 대한 이야기를 소개해요.' } };
       writeDemo(ledger);
     }
     return { ...ledger.results[requestId], wallet: demoState(ledger.wallet) };

@@ -42,7 +42,7 @@ export default function CreditWallet({ wallet, error, open, onOpenChange, onRefr
     {demoCredits && <p className="credit-demo-banner">화면 체험 모드 · 실제 AI 호출·광고·공유 없이 돋보기 흐름만 확인해요.</p>}
     {open && <Dialog title="나의 돋보기" onClose={() => { controller.current?.abort(); setOpen(false); setWorking(false); setDemoReward(null); }}>
       <div className="credit-balance"><Search size={35} strokeWidth={1.5} /><strong>{wallet?.balance ?? '—'}<small>개</small></strong><p>처음 연결하면 돋보기 10개를 드려요.</p></div>
-      <div className="credit-usage"><strong>식물 이름 찾기 · 돋보기 1개</strong><p>이름과 꽃말·상징을 함께 알려드려요.<br />메모 작성과 카드 저장은 추가 소모가 없어요.</p></div>
+      <div className="credit-usage"><strong>식물 이름 찾기 · 돋보기 1개</strong><p>이름·꽃말·유래와 신화·설화를 함께 알려드려요.<br />메모 작성과 카드 저장은 추가 소모가 없어요.</p></div>
       {error && <p className="inline-error" role="alert">{error}</p>}
       {!wallet && <button className="button button-secondary" onClick={() => void onRefresh()}>돋보기 다시 연결하기</button>}
       <button className="button button-primary" disabled={!wallet || working || (!demoCredits && (!isToss || !wallet.rewards.ad)) || (wallet?.ads ?? 0) >= creditPolicy.adDailyLimit} onClick={() => void earn('ad')}><Play size={21} />{working ? '보상을 확인하고 있어요' : demoCredits ? '광고 보상 체험 · +5개' : '광고 보고 돋보기 5개 받기'}</button>

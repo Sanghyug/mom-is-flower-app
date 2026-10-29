@@ -4,7 +4,7 @@ export type FlowerStory = {
 };
 export type FlowerResult = {
   name: string; language: string; nameEn?: string; languageEn?: string;
-  scientificName?: string; confidence?: 'high' | 'medium' | 'low';
+  story?: FlowerStory; scientificName?: string; confidence?: 'high' | 'medium' | 'low';
 };
 export type FlowerCard = FlowerResult & {
   id: string; image: string; story?: FlowerStory; memo?: string; createdAt: string;

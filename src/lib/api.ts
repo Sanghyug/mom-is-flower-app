@@ -4,7 +4,7 @@ export const storyFields: [keyof FlowerStory, string][] = [
   ['summary', '이 식물을 소개해요'], ['season', '계절별 모습'],
   ['habitat', '어디에서 만날까요?'], ['features', '이렇게 알아보세요'],
   ['meaningOrigin', '상징과 꽃말에 담긴 마음'], ['origin', '이름과 고향'],
-  ['legend', '전해 내려오는 이야기'], ['art', '문학과 예술 속에서'],
+  ['legend', '신화·설화·전설'], ['art', '문학과 예술 속에서'],
 ];
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -39,6 +39,7 @@ export function parseFlower(data: unknown): FlowerResult {
   if (!value || value.found === false) throw new Error('식물을 알아보기 어려워요. 잎이나 꽃이 또렷하게 보이도록 다시 찍어 주세요.');
   if (typeof value.name !== 'string' || !value.name.trim() || typeof value.language !== 'string') throw new Error('식물 이름을 확인하지 못했어요. 다른 사진으로 다시 시도해 주세요.');
   return {
+    ...(value.story ? { story: parseStory(value.story) } : {}),
     name: value.name.slice(0, 100), language: value.language.slice(0, 300),
     nameEn: typeof value.nameEn === 'string' ? value.nameEn : undefined,
     languageEn: typeof value.languageEn === 'string' ? value.languageEn : undefined,
