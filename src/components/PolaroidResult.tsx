@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Check, Download, Heart, LoaderCircle, Share2, Volume2, VolumeX } from 'lucide-react';
 import Dialog from './Dialog';
 import { storyFields } from '../lib/api';
-import { makeCard } from '../lib/card';
-import { downloadCard, shareCard } from '../lib/photos';
+import { makeCard, withoutLegacyQr } from '../lib/card';
+import { downloadCard, isToss } from '../lib/photos';
 import type { FlowerCard, FlowerResult, FlowerStory } from '../types';
 
 
@@ -25,6 +25,7 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
   const createdAt = useRef(saved?.createdAt || new Date().toISOString());
   const sessionId = useRef(saved?.id || crypto.randomUUID());
   const storyRef = useRef<HTMLElement>(null);
+  const shareLinkTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => () => { request.current?.abort(); window.speechSynthesis?.cancel(); }, []);
 
   async function loadStory() {
@@ -33,13 +34,17 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
   }
 
   useEffect(() => {
-    if (saved) return;
     let active = true;
+    if (saved) {
+      setExportImage('');
+      void withoutLegacyQr(saved.image).then(image => { if (active) setExportImage(image); }).catch(() => { if (active) setError('식물카드를 준비하지 못했어요.'); });
+      return () => { active = false; };
+    }
     setExportImage('');
     void makeCard(photo, result.name, result.language, memo.trim(), createdAt.current).then(image => { if (active) setExportImage(image); }).catch(() => { if (active) setError('식물카드를 준비하지 못했어요. 다시 열어 주세요.'); });
     return () => { active = false; };
   }, [photo, result.name, result.language, memo, saved]);
-  async function cardImage() { return exportImage || makeCard(photo, result.name, result.language, memo.trim(), createdAt.current); }
+  async function cardImage() { return exportImage || (saved ? withoutLegacyQr(saved.image) : makeCard(photo, result.name, result.language, memo.trim(), createdAt.current)); }
   async function persistForSharing() {
     const card: FlowerCard = { ...result, ...saved, id: sessionId.current, image: await cardImage(), memo: memo.trim(), createdAt: createdAt.current, ...(story ? { story } : {}) };
     await onSave(card); setStored(true);
@@ -53,10 +58,10 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
     } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했어요. 다시 시도해 주세요.'); }
     finally { setWorking(false); }
   }
-  async function exportCard(share: boolean) {
+  async function exportCard() {
     if (working) return;
     setWorking(true); setError('');
-    try { const image = await cardImage(); if (share) notify(await shareCard(image, result.name, result.language)); else { await downloadCard(image, result.name); notify('식물카드를 파일로 저장했어요.'); } }
+    try { const image = await cardImage(); { await downloadCard(image, result.name); notify(isToss ? '저장 창에서 저장 위치를 선택해 주세요.' : '식물카드 다운로드를 요청했어요.'); } }
     catch (e) { if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : '식물카드를 내보내지 못했어요. 잠시 후 다시 시도해 주세요.'); }
     finally { setWorking(false); }
   }
@@ -77,9 +82,9 @@ export default function FlowerResultView({ photo, result, saved, onClose, onSave
         {saved?.memo && <p className="saved-memo">“{saved.memo}”</p>}
         {error && <p className="inline-error" role="alert">{error}</p>}
         <button className="button button-primary" disabled={working || stored} onClick={() => void save()}>{stored ? <Check size={22} /> : <BookOpen size={22} />}{stored ? '식물도감에 담았어요' : working ? '잠시만 기다려 주세요' : saved ? '식물카드 기록 저장' : '나의 식물도감에 담기'}</button>
-        <div className="button-pair"><button className="button button-secondary" disabled={working || !exportImage} onClick={() => void exportCard(false)}><Download size={20} />파일 저장</button><button className="button button-secondary" disabled={working || !exportImage} onClick={() => void exportCard(true)}><Share2 size={20} />공유하기</button></div>
-        <CardLinkShare cardId={sessionId.current} name={result.name} meaning={result.language} memo={memo.trim()} createdAt={createdAt.current} getImage={cardImage} beforeCreate={persistForSharing} notify={notify} />
-        <p className="storage-note">이미지 공유를 지원하지 않는 기기에서는 파일로 저장해요. 카카오톡에서 저장한 사진을 선택해 보내 주세요.</p><p className="storage-note">식물도감은 이 기기에 저장돼요. 소중한 식물카드는 파일로도 보관해 주세요.</p>
+        <div className="button-pair"><button className="button button-secondary" disabled={working || !exportImage} onClick={() => void exportCard()}><Download size={20} />파일 저장</button><button className="button button-secondary" disabled={working || !exportImage} onClick={() => shareLinkTrigger.current?.click()}><Share2 size={20} /><span>공유하기<small className="share-reward-label">(돋보기 +1 · 하루 3회)</small></span></button></div>
+        <CardLinkShare triggerRef={shareLinkTrigger} cardId={sessionId.current} name={result.name} meaning={result.language} memo={memo.trim()} createdAt={createdAt.current} getImage={cardImage} beforeCreate={persistForSharing} notify={notify} />
+        <p className="storage-note">파일 저장은 기기의 저장·내보내기 창을 열어요. 공유하기는 식물카드와 정원 만들기 링크를 함께 보내요. 공유창 이용 보상은 하루 3회예요.</p><p className="storage-note">식물도감은 이 기기에 저장돼요. 소중한 식물카드는 파일로도 보관해 주세요.</p>
       </div></div>
     {storyOpen && <section className="flower-story" ref={storyRef} aria-label="식물 이야기"><div className="section-title"><h3>{result.name}의 이야기</h3>{'speechSynthesis' in window && <button className="subtle-link" onClick={readAloud}>{speaking ? <VolumeX size={21} /> : <Volume2 size={21} />}{speaking ? '읽기 멈추기' : '소리로 듣기'}</button>}</div>
       {storyLoading ? <p className="story-loading" role="status"><LoaderCircle size={22} className="spin" />꽃에 담긴 이야기를 가져오고 있어요.</p> : story ? <><p className="story-intro">{story.summary}</p><div className="story-sections">{storyFields.slice(1).map(([key, title]) => <section key={key}><h4>{title}</h4><p>{story[key] || '아직 알려진 이야기가 없어요.'}</p></section>)}</div><p className="storage-note">AI가 정리한 이야기로, 꽃말과 전설은 지역과 문화에 따라 다를 수 있어요.</p></> : <button className="button button-secondary" onClick={() => void loadStory()}>식물 이야기 다시 불러오기</button>}

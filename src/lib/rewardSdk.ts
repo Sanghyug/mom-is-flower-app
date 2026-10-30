@@ -3,6 +3,7 @@ import type { RewardKind } from './creditPolicy';
 import type { WalletState } from './creditClient';
 
 export async function runReward(kind: RewardKind, wallet: WalletState, signal: AbortSignal): Promise<string> {
+  if (kind !== 'ad') throw new Error('초대는 친구의 첫 식물 찾기 성공 후 자동 지급돼요.');
   const sdk = await import('@apps-in-toss/web-framework');
   if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
   if (kind === 'ad' && (!sdk.loadFullScreenAd.isSupported() || !sdk.showFullScreenAd.isSupported())) throw new Error('이 환경에서는 보상형 광고를 사용할 수 없어요. 토스 앱에서 확인해 주세요.');
@@ -19,13 +20,6 @@ export async function runReward(kind: RewardKind, wallet: WalletState, signal: A
     const abort = () => finish(undefined, new DOMException('Cancelled', 'AbortError'));
     const timer = setTimeout(() => finish(undefined, new Error('보상을 확인하지 못했어요. 다시 시도해 주세요.')), 180000);
     signal.addEventListener('abort', abort, { once: true });
-    if (kind === 'share') {
-      register(sdk.contactsViral({ options: { moduleId: wallet.shareModuleId },
-        onEvent: event => { if (event.type === 'sendViral') finish('sendViral'); else if (event.type === 'close') finish(undefined, new DOMException('Cancelled', 'AbortError')); },
-        onError: () => finish(undefined, new Error('공유를 완료하지 못했어요. 돋보기는 지급되지 않았어요.')),
-      }));
-      return;
-    }
     let showing = false;
     register(sdk.loadFullScreenAd({ options: { adGroupId: wallet.adGroupId || adGroups.rewarded }, onEvent: event => {
       if (event.type !== 'loaded' || showing || settled) return;

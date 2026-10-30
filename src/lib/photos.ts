@@ -1,4 +1,4 @@
-import { appEntryUrl } from './appLink';
+import { getAppShareLink } from './appLink';
 export const isToss = import.meta.env.MODE === 'toss';
 
 export function resizePhoto(source: string): Promise<string> {
@@ -46,6 +46,7 @@ export async function downloadCard(dataUrl: string, name: string) {
   link.href = dataUrl; link.download = `엄마는꽃_${safeName}.${extension}`; link.click();
 }
 export async function shareCard(dataUrl: string, name: string, meaning: string) {
+  const appUrl = await getAppShareLink();
   const [header, encoded] = dataUrl.split(',');
   const mime = header.startsWith('data:image/png;') ? 'image/png' : 'image/jpeg';
   const bytes = Uint8Array.from(atob(encoded), letter => letter.charCodeAt(0));
@@ -53,13 +54,12 @@ export async function shareCard(dataUrl: string, name: string, meaning: string) 
   const file = new File([blob], `mom-is-flower.${blob.type === 'image/png' ? 'png' : 'jpg'}`, { type: blob.type || 'image/jpeg' });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\n${appEntryUrl}`, files: [file] });
+      await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\n\n나만의 정원 만들기 🌿\n토스에서 엄마는꽃\n${appUrl}`, files: [file] });
       return '식물카드 공유 창을 열었어요.';
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error;
       // Some embedded WebViews advertise Web Share but reject file sharing.
     }
   }
-  await downloadCard(dataUrl, name);
-  return '식물카드를 파일로 저장했어요. 메신저에서 사진으로 보내 주세요.';
+  throw new Error('이 기기에서는 이미지와 글을 함께 공유하기 어려워요. 아래 식물카드 링크로 공유하기를 이용해 주세요.');
 }

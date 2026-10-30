@@ -31,3 +31,7 @@ dist-ssr
 !.env.toss
 *.ait
 .granite/
+
+# Local console screenshots and verification captures
+docs/verification/*.jpg
+docs/verification/*.png

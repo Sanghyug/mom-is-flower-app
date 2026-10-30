@@ -1,25 +1,27 @@
 export const creditPolicy = {
   welcome: 10,
   identify: 1,
-  shareReward: 2,
-  adReward: 5,
-  shareDailyLimit: 1,
+  shareReward: 5,
+  adReward: 2,
+  cardShareReward: 1,
+  cardShareDailyLimit: 3,
+  shareDailyLimit: 3,
   adDailyLimit: 5,
   identifyDailyLimit: 50,
   storyCost: 0,
 } as const;
-export type RewardKind = 'share' | 'ad';
-export type Wallet = { balance: number; day: string; searches: number; shares: number; ads: number };
+export type RewardKind = 'share' | 'ad' | 'card';
+export type Wallet = { balance: number; day: string; searches: number; shares: number; ads: number; cardShares?: number };
 export type Operation = { hash: string; status: 'pending' | 'done' | 'refunded'; result?: Record<string, unknown> };
 export class CreditError extends Error {
   status: number;
   constructor(code: string, status: number) { super(code); this.status = status; }
 }
 export function creditDay(now = Date.now()) { return new Date(now + 9 * 3600000).toISOString().slice(0, 10); }
-export function initialWallet(now = Date.now()): Wallet { return { balance: creditPolicy.welcome, day: creditDay(now), searches: 0, shares: 0, ads: 0 }; }
+export function initialWallet(now = Date.now()): Wallet { return { balance: creditPolicy.welcome, day: creditDay(now), searches: 0, shares: 0, ads: 0, cardShares: 0 }; }
 export function currentWallet(wallet: Wallet, now = Date.now()): Wallet {
   if (!Number.isSafeInteger(wallet.balance) || wallet.balance < 0) throw new CreditError('WALLET_INVALID', 503);
-  return wallet.day === creditDay(now) ? { ...wallet } : { ...wallet, day: creditDay(now), searches: 0, shares: 0, ads: 0 };
+  return wallet.day === creditDay(now) ? { ...wallet, cardShares: wallet.cardShares ?? 0 } : { ...wallet, day: creditDay(now), searches: 0, shares: 0, ads: 0, cardShares: 0 };
 }
 export function reserveCredit(wallet: Wallet, operation: Operation | undefined, hash: string, now = Date.now()) {
   const next = currentWallet(wallet, now);
@@ -41,9 +43,15 @@ export function settleCredit(wallet: Wallet, operation: Operation, result: Recor
 export function grantCredit(wallet: Wallet, kind: RewardKind, duplicate: boolean, now = Date.now()) {
   const next = currentWallet(wallet, now);
   if (duplicate) return next;
-  const field = kind === 'share' ? 'shares' : 'ads';
-  const limit = kind === 'share' ? creditPolicy.shareDailyLimit : creditPolicy.adDailyLimit;
-  if (next[field] >= limit) throw new CreditError('REWARD_DAILY_LIMIT', 429);
-  const amount = kind === 'share' ? creditPolicy.shareReward : creditPolicy.adReward;
-  return { ...next, balance: next.balance + amount, [field]: next[field] + 1 };
+  const field = kind === 'share' ? 'shares' : kind === 'card' ? 'cardShares' : 'ads';
+  const limit = kind === 'share' ? creditPolicy.shareDailyLimit : kind === 'card' ? creditPolicy.cardShareDailyLimit : creditPolicy.adDailyLimit;
+  if ((next[field] ?? 0) >= limit) throw new CreditError('REWARD_DAILY_LIMIT', 429);
+  const amount = kind === 'share' ? creditPolicy.shareReward : kind === 'card' ? creditPolicy.cardShareReward : creditPolicy.adReward;
+  return { ...next, balance: next.balance + amount, [field]: (next[field] ?? 0) + 1 };
+}
+
+
+export function rewardCompletionMatches(kind: unknown, event: unknown) {
+  return (kind === 'ad' && event === 'userEarnedReward') ||
+    (kind === 'card' && event === 'cardShareOpened');
 }

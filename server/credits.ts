@@ -1,17 +1,14 @@
+import { qualifyReferral } from './referrals.ts';
+import { connectWallet } from './walletRegistration.ts';
 import { adGroups } from '../src/lib/adGroups.ts';
 import { createHash } from 'node:crypto';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, type Transaction } from 'firebase-admin/firestore';
-import { CreditError, creditDay, currentWallet, grantCredit, initialWallet, reserveCredit, settleCredit, type Operation, type RewardKind, type Wallet } from '../src/lib/creditPolicy.ts';
+import { getFirebaseServices } from './firebase.ts';
+
+import type { Transaction } from 'firebase-admin/firestore';
+import { CreditError, creditDay, currentWallet, rewardCompletionMatches, grantCredit, reserveCredit, settleCredit, type Operation, type RewardKind, type Wallet } from '../src/lib/creditPolicy.ts';
 import type { Request, Response } from './openai.ts';
 
-export function services() {
-  const secret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!secret) throw new CreditError('CREDITS_NOT_CONFIGURED', 503);
-  const app = getApps().find(item => item.name === 'flower-credits') || initializeApp({ credential: cert(JSON.parse(secret)) }, 'flower-credits');
-  return { auth: getAuth(app), db: getFirestore(app) };
-}
+export const services = getFirebaseServices;
 export async function verifiedUser(req: Request) {
   const authorization = req.headers?.authorization;
   if (typeof authorization !== 'string' || !authorization.startsWith('Bearer ')) throw new CreditError('AUTH_REQUIRED', 401);
@@ -25,21 +22,10 @@ function clientBucket(req: Request) {
   return digest(`${process.env.CREDIT_IP_SALT || 'flower-credits'}:${ip}`);
 }
 async function ensureWallet(uid: string, req: Request): Promise<Wallet> {
-  const { db } = services();
-  const ref = db.collection('plant_credit_wallets').doc(uid);
-  const welcome = db.collection('plant_credit_signup_limits').doc(`${creditDay()}_${clientBucket(req)}`);
-  return db.runTransaction(async tx => {
-    const [existing, counter] = await Promise.all([tx.get(ref), tx.get(welcome)]);
-    if (existing.exists) return currentWallet(existing.data() as Wallet);
-    const count = Number(counter.data()?.count || 0);
-    if (count >= 20) throw new CreditError('SIGNUP_LIMIT', 429);
-    const wallet = initialWallet();
-    tx.set(ref, wallet); tx.set(welcome, { count: count + 1, expiresAt: new Date(Date.now() + 3 * 86400000) });
-    return wallet;
-  });
+  return connectWallet(services().db, uid, clientBucket(req), req.body?.referralCode);
 }
 export function rewardAvailability() {
-  return { ad: Boolean(process.env.TOSS_REWARDED_AD_GROUP_ID || adGroups.rewarded), share: Boolean(process.env.TOSS_SHARE_MODULE_ID) };
+  return { ad: Boolean(process.env.TOSS_REWARDED_AD_GROUP_ID || adGroups.rewarded), share: true, card: true };
 }
 export async function walletState(uid: string, req: Request) {
   let wallet = await ensureWallet(uid, req);
@@ -56,7 +42,7 @@ export async function walletState(uid: string, req: Request) {
     });
   }
   if (!pending.empty) wallet = currentWallet((await ref.get()).data() as Wallet);
-  return { ...wallet, rewards: rewardAvailability(), adGroupId: process.env.TOSS_REWARDED_AD_GROUP_ID || adGroups.rewarded, shareModuleId: process.env.TOSS_SHARE_MODULE_ID || '' };
+  return { ...wallet, rewards: rewardAvailability(), adGroupId: process.env.TOSS_REWARDED_AD_GROUP_ID || adGroups.rewarded, shareModuleId: '' };
 }
 function validId(value: unknown): value is string { return typeof value === 'string' && /^[a-zA-Z0-9-]{24,80}$/.test(value); }
 export async function paidRecognition(uid: string, req: Request, image: string, perform: () => Promise<Record<string, unknown>>) {
@@ -85,6 +71,7 @@ export async function paidRecognition(uid: string, req: Request, image: string, 
     return db.runTransaction(async tx => {
       const [walletDoc, opDoc] = await Promise.all([tx.get(walletRef), tx.get(operationRef)]);
       const state = settleCredit(walletDoc.data() as Wallet, opDoc.data() as Operation, result);
+      if (result && (opDoc.data() as Operation).status === 'pending') await qualifyReferral(tx, db, uid, requestId as string);
       tx.set(walletRef, state.wallet); tx.set(operationRef, state.operation, { merge: true });
     });
   }
@@ -95,11 +82,12 @@ export async function paidRecognition(uid: string, req: Request, image: string, 
   return { ...result, wallet: await walletState(uid, req) };
 }
 export async function startReward(uid: string, req: Request, kind: RewardKind) {
+  if (kind === 'share') throw new CreditError('INVITE_REQUIRES_FIRST_PLANT', 400);
   const wallet = await ensureWallet(uid, req);
   if (!rewardAvailability()[kind]) throw new CreditError('REWARD_NOT_CONFIGURED', 503);
   // Check eligibility without applying a grant.
   grantCredit(wallet, kind, false);
-  const ticket = digest(`${uid}:${creditDay()}:${kind}:${kind === 'ad' ? wallet.ads : wallet.shares}`);
+  const ticket = digest(`${uid}:${creditDay()}:${kind}:${kind === 'ad' ? wallet.ads : kind === 'card' ? (wallet.cardShares ?? 0) : wallet.shares}`);
   const ref = services().db.collection('plant_credit_rewards').doc(ticket);
   await services().db.runTransaction(async tx => {
     const previous = await tx.get(ref);
@@ -117,10 +105,11 @@ export async function finishReward(uid: string, req: Request) {
     const [receipt, walletDoc] = await Promise.all([tx.get(rewardRef), tx.get(walletRef)]);
     const data = receipt.data();
     if (!data || data.uid !== uid || !walletDoc.exists) throw new CreditError('INVALID_REWARD', 403);
+    if (data.kind === 'share') throw new CreditError('INVITE_REQUIRES_FIRST_PLANT', 400);
     if (data.used) return;
     if (Date.now() - data.createdAt > 15 * 60000) throw new CreditError('REWARD_EXPIRED', 409);
     const event = req.body?.event;
-    if ((data.kind === 'ad' && event !== 'userEarnedReward') || (data.kind === 'share' && event !== 'sendViral')) throw new CreditError('REWARD_NOT_COMPLETED', 400);
+    if (!rewardCompletionMatches(data.kind, event)) throw new CreditError('REWARD_NOT_COMPLETED', 400);
     const wallet = grantCredit(walletDoc.data() as Wallet, data.kind, false);
     tx.set(walletRef, wallet); tx.update(rewardRef, { used: true, completedAt: Date.now() });
   });
@@ -131,6 +120,7 @@ export function creditFailure(res: Response, error: CreditError) {
     AUTH_REQUIRED: '돋보기를 사용하려면 앱에 다시 연결해 주세요.', CREDITS_NOT_CONFIGURED: '돋보기 서비스 연결을 준비하고 있어요.',
     NO_CREDITS: '돋보기가 부족해요. 충전한 뒤 다시 찾아보세요.', REQUEST_PENDING: '같은 사진을 이미 살펴보고 있어요. 잠시 후 다시 확인해 주세요.',
     DAILY_LIMIT: '오늘의 식물 찾기 이용 한도에 도달했어요.', SERVICE_DAILY_LIMIT: '오늘 준비된 식물 찾기 수량을 모두 사용했어요. 내일 다시 만나 주세요.',
+    INVITE_REQUIRES_FIRST_PLANT: '초대받은 새 친구가 첫 식물 찾기에 성공하면 돋보기 5개를 드려요.',
     REWARD_DAILY_LIMIT: '오늘 받을 수 있는 보상을 모두 받았어요.', REWARD_NOT_CONFIGURED: '보상 충전 연결을 준비하고 있어요.',
   };
   return res.status(error.status).json({ code: error.message, error: messages[error.message] || '돋보기 요청을 완료하지 못했어요. 잠시 후 다시 시도해 주세요.' });

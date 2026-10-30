@@ -8,13 +8,15 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "toss:build": "ait build",
+    "toss:build": "tsc -b && vite build --mode toss && ait build",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
-    "@apps-in-toss/web-framework": "2.6.0",
+    "@apps-in-toss/web-framework": "3.9.0",
+    "@vercel/oidc": "4.0.5",
     "firebase": "^12.15.0",
     "firebase-admin": "^13.10.0",
+    "google-auth-library": "9.15.1",
     "lucide-react": "^1.16.0",
     "qrcode": "1.5.4",
     "react": "19.2.6",

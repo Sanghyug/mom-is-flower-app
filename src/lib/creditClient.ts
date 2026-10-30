@@ -1,6 +1,7 @@
+import { entryReferralCode } from './referralEntry';
 import { creditPolicy, grantCredit, initialWallet, type RewardKind, type Wallet } from './creditPolicy';
 
-export type WalletState = Wallet & { rewards: { ad: boolean; share: boolean }; adGroupId: string; shareModuleId: string };
+export type WalletState = Wallet & { rewards: { ad: boolean; share: boolean; card?: boolean }; adGroupId: string; shareModuleId: string };
 export const demoCredits = import.meta.env.DEV && import.meta.env.VITE_WALLET_DEMO === 'true';
 let authPromise: Promise<import('firebase/auth').Auth> | undefined;
 async function authToken() {
@@ -24,6 +25,8 @@ async function authToken() {
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 export async function creditRequest(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>> {
   if (demoCredits) throw new Error('체험 모드에서는 실제 API를 호출하지 않아요.');
+  const referralCode = await entryReferralCode();
+  const payload = body && typeof body === 'object' && !Array.isArray(body) ? { ...body, ...(referralCode ? { referralCode } : {}) } : body;
   let token: string;
   try { token = await authToken(); } catch { throw new Error('돋보기 계정에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.'); }
   const controller = new AbortController();
@@ -32,7 +35,7 @@ export async function creditRequest(path: string, body: unknown, signal?: AbortS
   signal?.addEventListener('abort', abort, { once: true });
   const timer = setTimeout(abort, 40000);
   try {
-    const response = await fetch(`${apiBase}/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body), signal: controller.signal });
+    const response = await fetch(`${apiBase}/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload), signal: controller.signal });
     const data: unknown = await response.json().catch(() => null);
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('돋보기 서비스 연결을 준비하고 있어요.');
     const result = data as Record<string, unknown>;

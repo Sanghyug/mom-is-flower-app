@@ -17,9 +17,16 @@
     },
     "api/shared-card.ts": {
       "maxDuration": 30
+    },
+    "api/referral.ts": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
+    {
+      "source": "/invite/:code",
+      "destination": "/api/referral?code=:code"
+    },
     {
       "source": "/s/:token",
       "destination": "/api/shared-card?token=:token"

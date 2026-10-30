@@ -29,3 +29,7 @@
 .card-link-panel { margin-top: 14px; padding: 18px; border: 1px solid #d6ddcf; border-radius: 16px; background: #f5f6ef; }
 .card-link-panel h3 { margin: 0 0 10px; font-size: 19px; }
 .card-link-panel p { font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
+
+.share-reward-label { display: block; font-size: 12px; line-height: 1.5; margin-top: 3px; font-weight: 500; }
+
+.invite-url { overflow-wrap: anywhere; font-size: 14px; }

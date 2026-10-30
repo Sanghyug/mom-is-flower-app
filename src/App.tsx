@@ -26,7 +26,13 @@ export default function App() {
     try { setWallet(await loadWallet()); setWalletError(''); }
     catch(e) { setWalletError(e instanceof Error ? e.message : '돋보기 잔액을 확인하지 못했어요.'); }
   }
-  useEffect(() => { void refreshWallet(); }, []);
+  useEffect(() => {
+    const refresh = () => { void refreshWallet(); };
+    const visible = () => { if (document.visibilityState === 'visible') refresh(); };
+    refresh(); window.addEventListener('plant-wallet-changed', refresh);
+    document.addEventListener('visibilitychange', visible);
+    return () => { window.removeEventListener('plant-wallet-changed', refresh); document.removeEventListener('visibilitychange', visible); };
+  }, []);
   const [page, setPage] = useState<'home' | 'archive'>('home');
   const [large, setLarge] = useState(() => { try { return localStorage.getItem('mom-flower-large-text') === 'true'; } catch { return false; } });
   const [archive, setArchive] = useState<FlowerCard[]>([]);
