@@ -20,7 +20,7 @@ export function shareSnapshot(value: unknown): ShareSnapshot {
 }
 export function shareIsActive(data: { revoked?: boolean; expiresAt?: number } | undefined, now = Date.now()) { return !!data && !data.revoked && typeof data.expiresAt === 'number' && data.expiresAt > now; }
 export function publicOrigin() {
-  const url = new URL(process.env.PUBLIC_APP_ORIGIN || 'https://mom-is-flower.vercel.app');
+  const url = new URL(process.env.PUBLIC_APP_ORIGIN || 'https://momisflower.com');
   if (url.protocol !== 'https:' || url.username || url.password) throw new ShareError('공유 서비스 주소 설정이 필요해요.',503);
   return url.origin;
 }

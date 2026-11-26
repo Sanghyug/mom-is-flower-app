@@ -37,6 +37,17 @@
       "source": "/toss",
       "destination": "/",
       "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.momisflower.com"
+        }
+      ],
+      "destination": "https://momisflower.com/:path*",
+      "permanent": true
     }
   ]
 }

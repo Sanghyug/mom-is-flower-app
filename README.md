@@ -5,7 +5,7 @@
 - 작업 폴더: D:\Codex\mom-is-flower-app
 - 원본 보관: C:\Users\parki\mom-is-flower-app (변경하지 않음)
 - 저장소: https://github.com/Sanghyug/mom-is-flower-app
-- 운영 주소: https://mom-is-flower.vercel.app
+- 운영 주소: https://momisflower.com
 - React 19 · Vite 8 · Firebase 익명 인증 / Firestore · Vercel Functions
 
 ## 실행과 검사
