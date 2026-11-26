@@ -28,10 +28,13 @@ dist-ssr
 
 # Renewal artifacts
 !.env.example
-!.env.toss
+!.env.production
 *.ait
 .granite/
 
 # Local console screenshots and verification captures
 docs/verification/*.jpg
 docs/verification/*.png
+
+.npm-cache/
+artifacts/

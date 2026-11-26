@@ -28,9 +28,9 @@ export async function postApi(path: string, body: unknown, signal?: AbortSignal)
   } catch (error) {
     if (signal?.aborted) throw error;
     if (timedOut) {
-      throw new Error('응답이 조금 늦어지고 있어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+      throw new Error('응답이 조금 늦어지고 있어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.', { cause: error });
     }
-    if (error instanceof TypeError || error instanceof SyntaxError) throw new Error('인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+    if (error instanceof TypeError || error instanceof SyntaxError) throw new Error('인터넷 연결을 확인한 뒤 다시 시도해 주세요.', { cause: error });
     throw error;
   } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
 }

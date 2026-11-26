@@ -1,16 +1,3 @@
-export const creditPolicy = {
-  welcome: 10,
-  identify: 1,
-  shareReward: 5,
-  adReward: 2,
-  cardShareReward: 1,
-  cardShareDailyLimit: 3,
-  shareDailyLimit: 3,
-  adDailyLimit: 5,
-  identifyDailyLimit: 50,
-  storyCost: 0,
-} as const;
-export type RewardKind = 'share' | 'ad' | 'card';
 export type Wallet = { balance: number; day: string; searches: number; shares: number; ads: number; cardShares?: number };
 export type Operation = { hash: string; status: 'pending' | 'done' | 'refunded'; result?: Record<string, unknown> };
 export class CreditError extends Error {
@@ -18,40 +5,3 @@ export class CreditError extends Error {
   constructor(code: string, status: number) { super(code); this.status = status; }
 }
 export function creditDay(now = Date.now()) { return new Date(now + 9 * 3600000).toISOString().slice(0, 10); }
-export function initialWallet(now = Date.now()): Wallet { return { balance: creditPolicy.welcome, day: creditDay(now), searches: 0, shares: 0, ads: 0, cardShares: 0 }; }
-export function currentWallet(wallet: Wallet, now = Date.now()): Wallet {
-  if (!Number.isSafeInteger(wallet.balance) || wallet.balance < 0) throw new CreditError('WALLET_INVALID', 503);
-  return wallet.day === creditDay(now) ? { ...wallet, cardShares: wallet.cardShares ?? 0 } : { ...wallet, day: creditDay(now), searches: 0, shares: 0, ads: 0, cardShares: 0 };
-}
-export function reserveCredit(wallet: Wallet, operation: Operation | undefined, hash: string, now = Date.now()) {
-  const next = currentWallet(wallet, now);
-  if (operation) {
-    if (operation.hash !== hash) throw new CreditError('REQUEST_CHANGED', 409);
-    if (operation.status === 'done') return { wallet: next, operation, cached: operation.result };
-    if (operation.status === 'pending') throw new CreditError('REQUEST_PENDING', 409);
-    // A refunded request can be retried with the same photo and request ID.
-  }
-  if (next.balance < creditPolicy.identify) throw new CreditError('NO_CREDITS', 402);
-  if (next.searches >= creditPolicy.identifyDailyLimit) throw new CreditError('DAILY_LIMIT', 429);
-  return { wallet: { ...next, balance: next.balance - creditPolicy.identify, searches: next.searches + 1 }, operation: { hash, status: 'pending' } as Operation, cached: undefined };
-}
-export function settleCredit(wallet: Wallet, operation: Operation, result: Record<string, unknown> | null) {
-  if (operation.status !== 'pending') return { wallet, operation };
-  if (result) return { wallet, operation: { ...operation, status: 'done', result } as Operation };
-  return { wallet: { ...wallet, balance: wallet.balance + creditPolicy.identify }, operation: { hash: operation.hash, status: 'refunded' } as Operation };
-}
-export function grantCredit(wallet: Wallet, kind: RewardKind, duplicate: boolean, now = Date.now()) {
-  const next = currentWallet(wallet, now);
-  if (duplicate) return next;
-  const field = kind === 'share' ? 'shares' : kind === 'card' ? 'cardShares' : 'ads';
-  const limit = kind === 'share' ? creditPolicy.shareDailyLimit : kind === 'card' ? creditPolicy.cardShareDailyLimit : creditPolicy.adDailyLimit;
-  if ((next[field] ?? 0) >= limit) throw new CreditError('REWARD_DAILY_LIMIT', 429);
-  const amount = kind === 'share' ? creditPolicy.shareReward : kind === 'card' ? creditPolicy.cardShareReward : creditPolicy.adReward;
-  return { ...next, balance: next.balance + amount, [field]: (next[field] ?? 0) + 1 };
-}
-
-
-export function rewardCompletionMatches(kind: unknown, event: unknown) {
-  return (kind === 'ad' && event === 'userEarnedReward') ||
-    (kind === 'card' && event === 'cardShareOpened');
-}

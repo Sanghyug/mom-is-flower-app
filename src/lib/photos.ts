@@ -1,5 +1,5 @@
 import { getAppShareLink } from './appLink';
-export const isToss = import.meta.env.MODE === 'toss';
+
 
 export function resizePhoto(source: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -24,24 +24,11 @@ export async function readPhoto(file: File) {
   const url = URL.createObjectURL(file);
   try { return await resizePhoto(url); } finally { URL.revokeObjectURL(url); }
 }
-export async function pickTossPhoto(kind: 'camera' | 'album') {
-  const { openCamera, fetchAlbumPhotos } = await import('@apps-in-toss/web-framework');
-  const picker = kind === 'camera' ? openCamera : fetchAlbumPhotos;
-  const status = await picker.getPermission();
-  if (status !== 'allowed' && await picker.openPermissionDialog() !== 'allowed') throw new Error('사진을 가져오려면 카메라 또는 사진 접근을 허용해 주세요. 토스 설정에서 권한을 바꿀 수 있어요.');
-  const result = kind === 'camera' ? await openCamera({ base64: true, maxWidth: 1280 }) : (await fetchAlbumPhotos({ base64: true, maxCount: 1, maxWidth: 1280 }))[0];
-  if (!result?.dataUri) return null;
-  return resizePhoto(result.dataUri.startsWith('data:') ? result.dataUri : `data:image/jpeg;base64,${result.dataUri}`);
-}
 export async function downloadCard(dataUrl: string, name: string) {
   const safeName = name.replace(/[\\/:*?"<>|]/g, '').slice(0, 50) || '꽃';
   const mimeType = dataUrl.startsWith('data:image/png;') ? 'image/png' : 'image/jpeg';
   const extension = mimeType === 'image/png' ? 'png' : 'jpg';
-  if (isToss) {
-    const { saveBase64Data } = await import('@apps-in-toss/web-framework');
-    await saveBase64Data({ data: dataUrl.split(',')[1], fileName: `엄마는꽃_${safeName}.${extension}`, mimeType });
-    return;
-  }
+
   const link = document.createElement('a');
   link.href = dataUrl; link.download = `엄마는꽃_${safeName}.${extension}`; link.click();
 }
@@ -54,7 +41,7 @@ export async function shareCard(dataUrl: string, name: string, meaning: string) 
   const file = new File([blob], `mom-is-flower.${blob.type === 'image/png' ? 'png' : 'jpg'}`, { type: blob.type || 'image/jpeg' });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\n\n나만의 정원 만들기 🌿\n토스에서 엄마는꽃\n${appUrl}`, files: [file] });
+      await navigator.share({ title: `${name} · 엄마는꽃`, text: `오늘 만난 ${name}, 상징과 꽃말은 ${meaning}\n\n나만의 정원 만들기 🌿\n엄마는꽃\n${appUrl}`, files: [file] });
       return '식물카드 공유 창을 열었어요.';
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error;

@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 export default function Dialog({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     const overflow = document.body.style.overflow;

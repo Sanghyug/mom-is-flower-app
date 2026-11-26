@@ -1,31 +1,23 @@
-import { adGroups } from '../lib/adGroups';
-import { useEffect, useRef, useState } from 'react';
-import { isToss } from '../lib/photos';
-let ready: Promise<void> | undefined;
+import { useEffect, useRef } from 'react';
+import { adSenseConfig } from '../lib/ads';
+
+const config = adSenseConfig(import.meta.env);
 export default function BannerAd() {
-  const target = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const slot = useRef<HTMLModElement>(null);
   useEffect(() => {
-    const id = import.meta.env.VITE_TOSS_BANNER_AD_GROUP_ID || adGroups.banner;
-    if (!isToss || !id) return;
-    let active = true;
-    let slot: { destroy: () => void } | undefined;
-    void (async () => {
-      try {
-        const { TossAds } = await import('@apps-in-toss/web-framework');
-        if (!TossAds.initialize.isSupported() || !TossAds.attachBanner.isSupported()) return;
-        ready ??= new Promise<void>((resolve, reject) => TossAds.initialize({ callbacks: { onInitialized: resolve, onInitializationFailed: reject } }));
-        await ready;
-        if (!active || !target.current) return;
-        setVisible(true);
-        slot = TossAds.attachBanner(id, target.current, { theme: 'light', tone: 'grey', variant: 'expanded', callbacks: {
-          onNoFill: () => { if (active) setVisible(false); },
-          onAdFailedToRender: () => { if (active) setVisible(false); },
-          onAdRendered: () => { if (active) setVisible(true); },
-        } });
-      } catch { if (active) setVisible(false); }
-    })();
-    return () => { active = false; slot?.destroy(); };
+    const element = slot.current;
+    if (!config.enabled || !element || element.dataset.requested) return;
+    // One request per DOM slot, including React StrictMode effect replays.
+    element.dataset.requested = 'true';
+    let script = document.querySelector<HTMLScriptElement>('script[data-flower-adsense]');
+    if (!script) {
+      script = document.createElement('script'); script.async = true;
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${config.client}`;
+      script.crossOrigin = 'anonymous'; script.dataset.flowerAdsense = 'true';
+      document.head.append(script);
+    }
+    try { const ads = window as Window & { adsbygoogle?: object[] }; (ads.adsbygoogle ??= []).push({}); } catch { /* Ad blocking never prevents plant analysis. */ }
   }, []);
-  return <aside className="banner-ad" aria-label="광고" hidden={!visible}><small>광고</small><div ref={target} /></aside>;
+  if (!config.enabled) return null;
+  return <aside className="banner-ad" aria-label="광고"><small>광고</small><ins ref={slot} className="adsbygoogle" style={{ display: 'block', minHeight: 100 }} data-ad-client={config.client} data-ad-slot={config.slot} data-ad-format="auto" data-full-width-responsive="true" /></aside>;
 }

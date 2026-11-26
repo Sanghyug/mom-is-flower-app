@@ -5,7 +5,7 @@ import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import App from "./App.tsx";
 
-if (import.meta.env.MODE !== 'toss') registerSW({ immediate: true });
+registerSW({ immediate: true });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

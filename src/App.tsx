@@ -8,7 +8,7 @@ import PolaroidResult from './components/PolaroidResult';
 import Dialog from './components/Dialog';
 import { changeCard, loadArchive } from './lib/archive';
 import { parseFlower } from './lib/api';
-import { isToss, pickTossPhoto, readPhoto } from './lib/photos';
+import { readPhoto } from './lib/photos';
 import type { FlowerCard, FlowerResult } from './types';
 import { track } from './lib/analytics';
 import PlantProgress from './components/PlantProgress';
@@ -24,7 +24,7 @@ export default function App() {
   const photoRequestId = useRef(crypto.randomUUID());
   async function refreshWallet() {
     try { setWallet(await loadWallet()); setWalletError(''); }
-    catch(e) { setWalletError(e instanceof Error ? e.message : '돋보기 잔액을 확인하지 못했어요.'); }
+    catch(e) { setWalletError(e instanceof Error ? e.message : '무료 분석 횟수을 확인하지 못했어요.'); }
   }
   useEffect(() => {
     const refresh = () => { void refreshWallet(); };
@@ -66,11 +66,7 @@ export default function App() {
   }
   function navigate(next: 'home' | 'archive') { setPage(next); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   async function pick(kind: 'camera' | 'album') {
-    if (!isToss) { (kind === 'camera' ? cameraRef : albumRef).current?.click(); return; }
-    setPicking(true); setError('');
-    try { const photo = await pickTossPhoto(kind); if (photo) { photoRequestId.current = crypto.randomUUID(); setPending(photo); setResult(null); } }
-    catch (e) { if (!/cancel|abort/i.test(String(e))) setError(e instanceof Error ? e.message : '사진을 가져오지 못했어요. 다시 시도해 주세요.'); }
-    finally { setPicking(false); }
+    (kind === 'camera' ? cameraRef : albumRef).current?.click();
   }
   async function fileSelected(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -82,7 +78,7 @@ export default function App() {
   }
   async function analyze() {
     if (!pending || busy) return;
-    if (!wallet || wallet.balance < 1) { setError(wallet ? '돋보기가 부족해요. 먼저 충전해 주세요.' : '돋보기 서비스 연결을 준비하고 있어요. 충전하기에서 다시 연결할 수 있어요.'); return; }
+    if (!wallet || wallet.balance < 1) { setError(wallet ? '오늘의 무료 분석을 모두 사용했어요. 내일 다시 찾아주세요.' : '무료 분석 서비스에 연결해 주세요. 이용 안내에서 다시 연결할 수 있어요.'); return; }
     setBusy(true); setError(''); setResult(null); track('flower_analyze_started');
     const controller = new AbortController(); requestRef.current = controller;
     try {
@@ -113,9 +109,8 @@ export default function App() {
   async function shareApp() {
     try {
       const appUrl = await getAppShareLink();
-      const text = `산책길에 만난 꽃, 이름이 궁금하다면? 토스 엄마는꽃에서 식물 이름과 이야기를 만나 보세요.\n${appUrl}`;
-      if (isToss) { const { share } = await import('@apps-in-toss/web-framework'); await share({ message: text }); }
-      else if (navigator.share) await navigator.share({ title: '엄마는꽃', text, url: appUrl });
+      const text = `산책길에 만난 꽃, 이름이 궁금하다면? 엄마는꽃에서 식물 이름과 이야기를 만나 보세요.\n${appUrl}`;
+      if (navigator.share) await navigator.share({ title: '엄마는꽃', text, url: appUrl });
       else { await navigator.clipboard.writeText(text); notify('앱 주소를 복사했어요. 친구에게 붙여 넣어 주세요.'); }
     } catch (e) { if (!(e instanceof DOMException && e.name === 'AbortError')) notify('공유하지 못했어요. 잠시 후 다시 시도해 주세요.'); }
   }
@@ -128,7 +123,7 @@ export default function App() {
     </header>
     <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={fileSelected} className="visually-hidden" aria-label="카메라로 식물 사진 찍기" tabIndex={-1} />
     <input ref={albumRef} type="file" accept="image/*" onChange={fileSelected} className="visually-hidden" aria-label="앨범에서 식물 사진 선택" tabIndex={-1} />
-    <CreditWallet open={walletOpen} onOpenChange={setWalletOpen} wallet={wallet} error={walletError} onRefresh={refreshWallet} onChange={setWallet} notify={notify} />
+    <CreditWallet open={walletOpen} onOpenChange={setWalletOpen} wallet={wallet} error={walletError} onRefresh={refreshWallet} />
     <main id="main-content">
       {page === 'home' ? <>
         <section className="home-hero" aria-labelledby="hero-title">
@@ -153,11 +148,11 @@ export default function App() {
         <section className="sharing-note"><Heart size={22} strokeWidth={1.5} /><div><h3>좋은 건, 함께 보고 싶으니까</h3><p>식물을 좋아하는 소중한 사람에게 알려 주세요.</p></div><button className="icon-button" aria-label="엄마는꽃 앱 공유하기" onClick={() => void shareApp()}><Share2 size={22} /></button></section>
       </> : <FlowerArchiver archive={archive} loading={!archiveReady && !archiveError} error={archiveError} onDelete={remove} onSave={save} onAdd={() => void pick('camera')} notify={notify} />}
       <BannerAd />
-      <footer className="app-footer"><Flower2 size={18} /><p>식물을 만난 오늘도, 당신은 꽃이에요.</p><small>© 2026 BamnamuLab · 엄마는꽃</small></footer>
+      <footer className="app-footer"><Flower2 size={18} /><p>식물을 만난 오늘도, 당신은 꽃이에요.</p><small>© 2026 BamnamuLab · 엄마는꽃</small><p><a href="/about.html">서비스 소개</a> · <a href="/privacy.html">개인정보처리방침</a> · <a href="/terms.html">이용약관</a> · <a href="/contact.html">문의</a></p></footer>
     </main>
     <nav className="bottom-nav" aria-label="주요 메뉴"><button aria-current={page === 'home' ? 'page' : undefined} onClick={() => navigate('home')}><Search size={23} /><span>식물 이름 찾기</span></button><button aria-current={page === 'archive' ? 'page' : undefined} onClick={() => navigate('archive')}><BookOpen size={23} /><span>나의 식물도감</span><span className="nav-count">{archive.length}</span></button></nav>
     {guide && <Dialog title="식물 사진, 이렇게 찍어 보세요" onClose={() => setGuide(false)}><div className="guide-visual"><Flower2 size={65} strokeWidth={1} /><span className="focus-corner top-left" /><span className="focus-corner bottom-right" /></div><ol className="guide-list"><li><strong>잎이나 꽃을 가까이</strong><p>꽃은 꽃잎을, 나무는 잎과 줄기가 잘 보이게 찍어 주세요.</p></li><li><strong>밝은 곳에서 흔들림 없이</strong><p>여러 식물이 겹치면 이름을 찾기 어려울 수 있어요.</p></li><li><strong>찍어 둔 사진도 괜찮아요</strong><p>앨범에서 마음에 드는 식물 사진을 골라 보세요.</p></li></ol><button className="button button-primary" onClick={() => setGuide(false)}>알겠어요</button></Dialog>}
-    {pending && !result && !walletOpen && <Dialog title={busy ? '식물의 이름을 찾고 있어요' : '이 식물이 궁금하신가요?'} onClose={closePhoto}><img src={pending} alt="분석할 식물 사진" className="photo-preview" />{busy ? <div className="analysis-state" role="status"><LoaderCircle size={30} className="spin" /><h3>잎과 꽃의 특징을 살펴보고 있어요</h3><p>이름·꽃말·유래와 이야기를 함께 정리하고 있어요.</p><button className="button button-secondary" onClick={closePhoto}>그만 찾기</button></div> : <><p className="photo-consent">{demoCredits ? '체험 모드예요. 사진을 전송하지 않고 모의 결과로 돋보기 흐름만 보여드려요.' : '선택한 사진은 식물을 알아보기 위해 AI 서비스(OpenAI)로 전송돼요.'}</p>{error && <p className="inline-error" role="alert">{error}</p>}{(!wallet || wallet.balance < 1) && <button className="button button-secondary" onClick={() => setWalletOpen(true)}>돋보기 충전·연결하기</button>}<button className="button button-primary" disabled={!wallet || wallet.balance < 1} onClick={() => void analyze()}><Search size={22} />{error ? '이 사진으로 다시 찾기 · 돋보기 1개' : '이 사진으로 찾기 · 돋보기 1개'}</button><button className="button button-text" onClick={closePhoto}>다른 사진 고르기</button><p className="storage-note">같은 요청을 다시 확인할 때는 중복 차감하지 않아요. 이름을 찾지 못하거나 서버 오류가 나면 돋보기를 돌려드려요.</p></>}</Dialog>}
+    {pending && !result && !walletOpen && <Dialog title={busy ? '식물의 이름을 찾고 있어요' : '이 식물이 궁금하신가요?'} onClose={closePhoto}><img src={pending} alt="분석할 식물 사진" className="photo-preview" />{busy ? <div className="analysis-state" role="status"><LoaderCircle size={30} className="spin" /><h3>잎과 꽃의 특징을 살펴보고 있어요</h3><p>이름·꽃말·유래와 이야기를 함께 정리하고 있어요.</p><button className="button button-secondary" onClick={closePhoto}>그만 찾기</button></div> : <><p className="photo-consent">{demoCredits ? '체험 모드예요. 사진을 전송하지 않고 모의 결과로 분석 흐름만 보여드려요.' : '선택한 사진은 식물을 알아보기 위해 AI 서비스(OpenAI)로 전송돼요.'}</p>{error && <p className="inline-error" role="alert">{error}</p>}{(!wallet || wallet.balance < 1) && <button className="button button-secondary" onClick={() => setWalletOpen(true)}>무료 분석 이용 안내</button>}<button className="button button-primary" disabled={!wallet || wallet.balance < 1} onClick={() => void analyze()}><Search size={22} />{error ? '이 사진으로 다시 찾기' : '이 사진으로 무료 분석하기'}</button><button className="button button-text" onClick={closePhoto}>다른 사진 고르기</button><p className="storage-note">같은 요청은 중복 차감하지 않아요. 이름을 찾지 못하거나 서버 오류가 나면 이용 횟수를 돌려드려요.</p></>}</Dialog>}
     {pending && result && <PolaroidResult photo={pending} result={result} onClose={closePhoto} onSave={save} notify={notify} />}
     {toast && <div className="toast" role="status"><Check size={20} /><span>{toast}</span>{undo && <button onClick={() => void restore()}>되돌리기</button>}<button className="toast-dismiss" aria-label="알림 닫기" onClick={() => { setToast(''); setUndo(null); }}>×</button></div>}
   </div>;

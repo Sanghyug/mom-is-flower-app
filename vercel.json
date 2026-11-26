@@ -30,10 +30,13 @@
     {
       "source": "/s/:token",
       "destination": "/api/shared-card?token=:token"
-    },
+    }
+  ],
+  "redirects": [
     {
       "source": "/toss",
-      "destination": "/api/open-toss"
+      "destination": "/",
+      "permanent": true
     }
   ]
 }

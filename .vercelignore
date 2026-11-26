@@ -1,0 +1,10 @@
+.git
+.env*
+!.env.production
+node_modules
+artifacts
+.npm-cache
+tests
+docs
+scripts
+dist
